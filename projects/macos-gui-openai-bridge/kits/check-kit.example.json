@@ -1,0 +1,17 @@
+{
+  "name": "Release Safety Check Kit",
+  "version": "0.1.0",
+  "checks": [
+    {
+      "id": "pii_scan",
+      "description": "Scan output payloads for accidental PII before release."
+    },
+    {
+      "id": "policy_guard",
+      "description": "Validate outputs against internal policy constraints."
+    }
+  ],
+  "metadata": {
+    "kit_type": "check"
+  }
+}
