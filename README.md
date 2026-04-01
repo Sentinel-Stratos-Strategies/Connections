@@ -67,3 +67,10 @@ This repository should not be used to expose sensitive login histories or recove
 ### 1) macOS GUI → OpenAI Platform Bridge
 
 Initial implementation lives in `projects/macos-gui-openai-bridge/` and provides starter kit schemas and a CLI bridge for mapping supported artifacts into OpenAI API resources.
+
+
+## Builder Skill Assets
+
+- `skills/openai-platform-builder/SKILL.md` for reusable CLI skill workflow.
+- `projects/macos-gui-openai-bridge/OPENAI_BACKEND_SKILLSET.md` for documentation-based implementation mapping.
+- `templates/claude-codex-openai-workflow.md` for command-ready workflow steps.

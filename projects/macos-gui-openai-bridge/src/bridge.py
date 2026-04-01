@@ -52,7 +52,7 @@ def validate_widget_kit(payload: dict[str, Any]) -> None:
     require_fields(payload, ["name", "version", "entrypoints"])
 
 
-def post(path: str, body: dict[str, Any], api_key: str) -> dict[str, Any]:
+def request(path: str, body: dict[str, Any], api_key: str, method: str = "POST") -> dict[str, Any]:
     req = urllib.request.Request(
         f"{API_BASE}{path}",
         data=json.dumps(body).encode("utf-8"),
@@ -60,7 +60,7 @@ def post(path: str, body: dict[str, Any], api_key: str) -> dict[str, Any]:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
-        method="POST",
+        method=method,
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
@@ -78,24 +78,56 @@ def push_agent(payload: dict[str, Any], api_key: str) -> None:
         "tools": payload.get("tools", []),
         "metadata": payload.get("metadata", {}),
     }
-    result = post("/assistants", body, api_key)
+    result = request("/assistants", body, api_key)
     print(json.dumps({"assistant_id": result.get("id")}, indent=2))
 
 
 def push_thread(payload: dict[str, Any], api_key: str) -> None:
-    thread = post("/threads", {}, api_key)
+    thread = request("/threads", {}, api_key)
     thread_id = thread.get("id")
     if not thread_id:
         raise RuntimeError("Thread creation did not return an id")
 
     for message in payload["messages"]:
-        post(
+        request(
             f"/threads/{thread_id}/messages",
             {"role": message["role"], "content": message["content"]},
             api_key,
         )
 
     print(json.dumps({"thread_id": thread_id, "message_count": len(payload["messages"])}, indent=2))
+
+
+def run_response(payload: dict[str, Any], api_key: str, user_input: str, mcp_server_url: str | None) -> None:
+    tools: list[dict[str, Any]] = payload.get("tools", [])
+    if mcp_server_url:
+        tools.append(
+            {
+                "type": "mcp",
+                "server_label": payload.get("name", "kit_mcp").replace(" ", "_").lower(),
+                "server_url": mcp_server_url,
+                "allowed_tools": ["search", "fetch"],
+                "require_approval": "never",
+            }
+        )
+
+    body = {
+        "model": payload["model"],
+        "instructions": payload["instructions"],
+        "input": user_input,
+        "tools": tools,
+    }
+    result = request("/responses", body, api_key)
+    print(
+        json.dumps(
+            {
+                "response_id": result.get("id"),
+                "status": result.get("status"),
+                "output_text": result.get("output_text"),
+            },
+            indent=2,
+        )
+    )
 
 
 def main(argv: list[str]) -> int:
@@ -111,6 +143,11 @@ def main(argv: list[str]) -> int:
 
     push_thread_cmd = subparsers.add_parser("push-thread")
     push_thread_cmd.add_argument("--file", required=True)
+
+    run_cmd = subparsers.add_parser("run-agent")
+    run_cmd.add_argument("--file", required=True)
+    run_cmd.add_argument("--input", required=True)
+    run_cmd.add_argument("--mcp-server-url", required=False)
 
     args = parser.parse_args(argv)
     payload = load_json(Path(args.file))
@@ -136,6 +173,9 @@ def main(argv: list[str]) -> int:
     elif args.command == "push-thread":
         validate_thread_kit(payload)
         push_thread(payload, api_key)
+    elif args.command == "run-agent":
+        validate_agent_kit(payload)
+        run_response(payload, api_key, args.input, args.mcp_server_url)
 
     return 0
 

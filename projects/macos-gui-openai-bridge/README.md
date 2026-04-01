@@ -69,3 +69,12 @@ python3 src/bridge.py push-thread --file kits/chat-thread-kit.example.json
 - Add optional vector store wiring and file ingestion helper.
 - Add MCP tunnel adapter contracts.
 - Add widget deployment adapters for supported targets.
+
+
+## Documentation-driven build track
+
+For an OpenAI-docs-derived implementation map for Codex/Claude/CLI usage (agents, widget kits, check kits, MCP connectors, and backend push patterns), see:
+
+- `projects/macos-gui-openai-bridge/OPENAI_BACKEND_SKILLSET.md`
+- `skills/openai-platform-builder/SKILL.md`
+- `templates/claude-codex-openai-workflow.md`
