@@ -1,0 +1,12 @@
+{
+  "name": "Status Widget Kit",
+  "version": "0.1.0",
+  "description": "Widget metadata package for supported deployment adapters.",
+  "entrypoints": {
+    "web": "widgets/status/index.html",
+    "api": "widgets/status/manifest.json"
+  },
+  "metadata": {
+    "kit_type": "widget"
+  }
+}
