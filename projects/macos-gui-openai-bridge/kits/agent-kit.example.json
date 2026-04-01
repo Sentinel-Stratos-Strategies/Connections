@@ -1,0 +1,14 @@
+{
+  "name": "Support Operations Assistant",
+  "model": "gpt-4.1",
+  "instructions": "You are an operations assistant. Provide concise and compliant answers.",
+  "tools": [
+    {
+      "type": "file_search"
+    }
+  ],
+  "metadata": {
+    "owner": "connections-repo",
+    "kit_type": "agent"
+  }
+}

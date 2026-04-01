@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "name": "Onboarding Thread",
+    "kit_type": "chat_thread"
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please summarize this project's compliance constraints."
+    },
+    {
+      "role": "assistant",
+      "content": "The project only supports legal, permissible, and policy-compliant workflows."
+    }
+  ]
+}
