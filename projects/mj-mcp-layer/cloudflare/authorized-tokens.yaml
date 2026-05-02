@@ -1,0 +1,29 @@
+# Authorized Cloudflare API tokens — what *should* exist for your-domain.example.
+# Sentinel scan compares this to the live token list. Anything else is flagged.
+version: 1
+last_updated: 2026-04-30
+
+tokens:
+  - name: codex-master-write
+    purpose: Codex automation — full zone edit
+    scopes: [Zone.Read, Zone.WAF.Edit, Zone.Cache.Rules.Edit, Zone.Rulesets.Edit, DNS.Edit]
+    holder: codex-agent
+    rotation: quarterly
+    last_rotated: 2026-04-30
+
+  - name: codex-readonly-distribution
+    purpose: Pool token from which Codex mints scoped read-only tokens for sub-agents
+    scopes: [Zone.Read, DNS.Read]
+    holder: codex-agent
+    rotation: quarterly
+    last_rotated: 2026-04-30
+
+  - name: wrangler-deploy
+    purpose: Worker deploys for mj-edge
+    scopes: [Workers.Scripts.Edit, Workers.Routes.Edit]
+    holder: codex-agent
+    rotation: quarterly
+    last_rotated: 2026-04-30
+
+# Any token in the CF dashboard not listed here = unauthorized.
+# Sentinel scan flags + alerts.

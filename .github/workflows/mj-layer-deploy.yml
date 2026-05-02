@@ -1,0 +1,65 @@
+name: MJ Layer Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["MJ_Layer"]
+    paths:
+      - "projects/mj-mcp-layer/**"
+      - ".github/workflows/mj-layer-deploy.yml"
+
+jobs:
+  harden-and-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - zone_name: your-domain.example
+            zone_id_secret: CF_ZONE_ID_ELLIS
+          - zone_name: hitch.guru
+            zone_id_secret: CF_ZONE_ID_HITCH
+          - zone_name: kevis.online
+            zone_id_secret: CF_ZONE_ID_KEVIS
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve zone id
+        id: zone
+        shell: bash
+        env:
+          CF_ZONE_ID_ELLIS: ${{ secrets.CF_ZONE_ID_ELLIS }}
+          CF_ZONE_ID_HITCH: ${{ secrets.CF_ZONE_ID_HITCH }}
+          CF_ZONE_ID_KEVIS: ${{ secrets.CF_ZONE_ID_KEVIS }}
+        run: |
+          key='${{ matrix.zone_id_secret }}'
+          val="$(printenv "$key" || true)"
+          [ -n "$val" ] || { echo "Missing secret $key"; exit 1; }
+          echo "zone_id=$val" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare env
+        run: |
+          cp projects/mj-mcp-layer/templates/.env.example .env || true
+          if [ ! -f .env ]; then
+            cat > .env <<EOT
+CF_ZONE_ID=${{ steps.zone.outputs.zone_id }}
+CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}
+EOT
+          fi
+          sed -i "s|CF_ZONE_ID=YOUR_ZONE_ID|CF_ZONE_ID=${{ steps.zone.outputs.zone_id }}|" .env || true
+          sed -i "s|CF_API_TOKEN=YOUR_CLOUDFLARE_API_TOKEN|CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}|" .env || true
+
+      - name: Preflight
+        run: bash projects/mj-mcp-layer/cloudflare/00-preflight.sh
+
+      - name: Harden
+        run: bash projects/mj-mcp-layer/cloudflare/99-run-cloudflare-hardening.sh
+
+      - name: Scan
+        run: bash projects/mj-mcp-layer/cloudflare/sentinel-scan.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mj-layer-${{ matrix.zone_name }}
+          path: artifacts/**

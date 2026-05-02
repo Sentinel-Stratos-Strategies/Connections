@@ -1,0 +1,72 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ellis-aegis-control-plane",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-29",
+  "preview_urls": false,
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "APP_NAME": "ellis-aegis-control-plane",
+    "APP_ENV": "production",
+    "ZONE_NAME": "your-domain.example",
+    "PUBLIC_BASE_URL": "https://api.your-domain.example",
+    "ALLOWED_ORIGINS": "https://admin.your-domain.example,https://vault.your-domain.example",
+    "OPERATOR_HEADER": "x-ellis-aegis-token"
+  },
+  "triggers": {
+    "crons": [
+      "0 */2 * * *",
+      "15 6 * * *"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ellis-aegis-control-plane",
+      "database_id": "5fe110fa-5bc8-4925-a5d5-2ca08c5bee5b"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "FLAGS",
+      "id": "5a7fbf6b63bf4b02bb14ab7cd3d2f521"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "EVIDENCE_BUCKET",
+      "bucket_name": "ellis-aegis-evidence"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "WATCHER_QUEUE",
+        "queue": "ellis-aegis-watchers"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "ellis-aegis-watchers"
+      }
+    ]
+  },
+
+  // Uncomment as resources come online.
+  // "routes": [
+  //   {
+  //     "pattern": "api.your-domain.example/*",
+  //     "zone_name": "your-domain.example"
+  //   }
+  // ],
+  // Uncomment after Email Routing is enabled and your destination address is verified.
+  // "send_email": [
+  //   {
+  //     "name": "ALERT_EMAIL",
+  //     "destination_address": "operator@example.com"
+  //   }
+  // ]
+}

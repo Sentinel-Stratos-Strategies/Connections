@@ -1,0 +1,26 @@
+version: 1
+domain: hitch.guru
+provider: cloudflare
+status: ns_delegated
+origin:
+  type: gadget
+  target: hitch.gadget.app
+dns_records:
+  - type: CNAME
+    name: '@'
+    content: hitch.gadget.app
+    proxied: false
+    ttl: 300
+  - type: CNAME
+    name: www
+    content: hitch.guru
+    proxied: false
+    ttl: 300
+security:
+  ssl_mode: full_strict
+  always_https: true
+  hsts: planned
+routing:
+  mcp_entry: https://codex.your-domain.example/mcp
+notes:
+  - Keep mail records absent unless mail is intentionally enabled for this domain.

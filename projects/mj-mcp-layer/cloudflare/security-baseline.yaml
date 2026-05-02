@@ -1,0 +1,99 @@
+# Security baseline — single source of truth for Cloudflare hardening
+# Codex reads this file. Do not hand-edit Cloudflare without updating here.
+version: 1
+zone: your-domain.example
+last_updated: 2026-04-30
+owner: operator@example.com
+
+hosts:
+  - host: codex.your-domain.example
+    role: mcp
+    canonical: true
+  - host: cursor.your-domain.example
+    role: mcp
+    canonical: true
+  - host: gemini.your-domain.example
+    role: mcp
+    canonical: true
+  - host: antigravity.your-domain.example
+    role: mcp
+    canonical: true
+  - host: antigrativy.your-domain.example
+    role: mcp_alias
+    canonical: false
+    redirect_to: antigravity.your-domain.example
+    redirect_enabled: false   # flip to true if Joe wants 301; default false to preserve typo-safe behavior
+
+# Allowed methods + paths per role
+allow_matrix:
+  mcp:
+    - path: "/mcp"
+      methods: ["POST", "GET", "OPTIONS"]
+    - path_prefix: "/turn/"
+      methods: ["POST", "OPTIONS"]
+    - path_prefix: "/audit/"
+      methods: ["GET", "OPTIONS"]
+    - path: "/healthz"
+      methods: ["GET"]
+
+# WAF custom rules (phase: http_request_firewall_custom)
+waf_rules:
+  - description: "MCP-fleet :: block disallowed methods on /mcp"
+    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and http.request.uri.path eq "/mcp" and not http.request.method in {"POST" "GET" "OPTIONS"})'
+    action: block
+
+  - description: "MCP-fleet :: block disallowed methods on /turn/*"
+    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and starts_with(http.request.uri.path, "/turn/") and not http.request.method in {"POST" "OPTIONS"})'
+    action: block
+
+  - description: "MCP-fleet :: block unknown paths"
+    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and not (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or http.request.uri.path eq "/healthz"))'
+    action: block
+
+  - description: "MCP-fleet :: require Authorization header on /mcp + /turn/*"
+    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")) and http.request.method ne "OPTIONS" and not http.request.headers["authorization"][0] matches "^Bearer\\s.+")'
+    action: block
+
+# Rate limiting (phase: http_ratelimit)
+rate_limits:
+  - description: "MCP-fleet :: /mcp soft cap"
+    match_expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and http.request.uri.path eq "/mcp")'
+    requests_per_period: 120
+    period_seconds: 60
+    mitigation_timeout_seconds: 60
+    action: managed_challenge
+
+  - description: "MCP-fleet :: /turn/* hard cap"
+    match_expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and starts_with(http.request.uri.path, "/turn/"))'
+    requests_per_period: 60
+    period_seconds: 60
+    mitigation_timeout_seconds: 120
+    action: block
+
+# Cache rules (phase: http_request_cache_settings)
+cache_rules:
+  - description: "MCP-fleet :: bypass cache on dynamic endpoints"
+    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/")))'
+    cache: bypass
+
+# Bot management posture
+bot_management:
+  super_bot_fight_mode:
+    definitely_automated: block
+    likely_automated: managed_challenge
+  mcp_exemption:
+    description: "MCP-fleet :: skip bot fight on /mcp + /turn/* (clients are bots by design)"
+    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")))'
+    action: skip
+    skip_phases: [http_request_firewall_managed]
+
+# Secret rotation log
+rotation_log:
+  - date: 2026-04-30
+    item: SUPABASE_SERVICE_ROLE_KEY
+    status: NEEDS_ROTATION
+    reason: "Exposed in chat history during 16-hour build session"
+  - date: 2026-04-30
+    item: SUPABASE_JWT_JWK
+    status: REVIEW
+    reason: "Shared during worker secret config"

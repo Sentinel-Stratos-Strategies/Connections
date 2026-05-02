@@ -1,0 +1,33 @@
+version: 1
+zone: your-domain.example
+worker: mj-edge
+hosts:
+  - host: codex.your-domain.example
+    path: /mcp
+    backend: mj-edge
+  - host: cursor.your-domain.example
+    path: /mcp
+    backend: mj-edge
+  - host: gemini.your-domain.example
+    path: /mcp
+    backend: mj-edge
+  - host: chatgpt.your-domain.example
+    path: /mcp
+    backend: mj-edge
+  - host: hitch.your-domain.example
+    path: /mcp
+    backend: mj-edge
+  - host: kevis.your-domain.example
+    path: /mcp
+    backend: mj-edge
+policies:
+  allowed_paths:
+    - /mcp
+    - /turn/*
+    - /audit/*
+    - /healthz
+  header_contract:
+    - x-tenant-id
+    - x-request-id
+    - x-policy-version
+    - x-operator-capability

@@ -1,0 +1,35 @@
+# Authorized agents — only these may submit change requests to Codex.
+# Anything not on this list gets denied + logged as suspicious.
+version: 1
+last_updated: 2026-04-30
+
+agents:
+  - id: cursor.your-domain.example
+    role: development
+    permitted_intents:
+      - request_readonly_token
+    rate_limit: 10/hour
+
+  - id: gemini.your-domain.example
+    role: research
+    permitted_intents:
+      - request_readonly_token
+    rate_limit: 10/hour
+
+  - id: antigravity.your-domain.example
+    role: build
+    permitted_intents:
+      - request_readonly_token
+      - add_dns_record   # for ACME only, enforced by Codex policy
+    rate_limit: 5/hour
+
+  - id: codex.your-domain.example
+    role: self
+    permitted_intents:
+      - "*"   # the operator agent itself
+    rate_limit: unlimited
+
+# Joe (human operator) — distinct from agents
+operator:
+  id: operator@example.com
+  override_capable: true   # can approve any request that was escalated
