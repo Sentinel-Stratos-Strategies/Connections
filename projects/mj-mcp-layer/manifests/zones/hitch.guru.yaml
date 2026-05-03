@@ -1,26 +1,39 @@
-version: 1
+version: 2
 domain: hitch.guru
 provider: cloudflare
-status: ns_delegated
-origin:
-  type: gadget
-  target: hitch.gadget.app
-dns_records:
-  - type: CNAME
-    name: '@'
-    content: hitch.gadget.app
-    proxied: false
-    ttl: 300
-  - type: CNAME
-    name: www
-    content: hitch.guru
-    proxied: false
-    ttl: 300
+status: transfer_pending_from_namecheap
+authority_model: mj_governed_project_lane
+owner_authority_zone: ellis-aegis.us
+
+public_surface:
+  launch_posture: hold_until_transfer_and_origin_confirmed
+  origin_to_confirm: true
+
+origins:
+  master_mj_worker: mj-edge
+  public_origin: pending_confirmation
+
+worker_routes_desired:
+  - pattern: hitch.guru/mcp/*
+    worker: mj-edge
+    status: pending_dns_stable
+  - pattern: hitch.guru/turn/*
+    worker: mj-edge
+    status: pending_dns_stable
+  - pattern: hitch.guru/audit/*
+    worker: mj-edge
+    status: pending_dns_stable
+
 security:
   ssl_mode: full_strict
   always_https: true
-  hsts: planned
-routing:
-  mcp_entry: https://codex.your-domain.example/mcp
+  hsts: planned_after_stable_cutover
+  protected_paths:
+    - /mcp/*
+    - /turn/*
+    - /audit/*
+  deny_by_default: true
+
 notes:
-  - Keep mail records absent unless mail is intentionally enabled for this domain.
+  - Do not create aggressive DNS cutover until Cloudflare transfer/delegation is complete.
+  - Previous manifest referenced Gadget as origin, but final public origin must be confirmed before apex/www records are created.

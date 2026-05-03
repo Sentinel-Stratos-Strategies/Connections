@@ -1,28 +1,76 @@
-version: 1
-zone: your-domain.example
+version: 2
+authority_zone: ellis-aegis.us
 worker: mj-edge
-hosts:
-  - host: codex.your-domain.example
-    path: /mcp
+
+authority_hosts:
+  - host: mj.ellis-aegis.us
+    role: primary_operator_control_plane
+    paths:
+      - /mcp
+      - /turn/*
+      - /audit/*
+      - /healthz
     backend: mj-edge
-  - host: cursor.your-domain.example
-    path: /mcp
+  - host: mcp.ellis-aegis.us
+    role: protocol_entry
+    paths:
+      - /mcp
+      - /turn/*
+      - /audit/*
+      - /healthz
     backend: mj-edge
-  - host: gemini.your-domain.example
-    path: /mcp
+  - host: codex.ellis-aegis.us
+    role: codex_operator_lane
+    paths:
+      - /mcp
+      - /turn/*
+      - /audit/*
+      - /healthz
     backend: mj-edge
-  - host: chatgpt.your-domain.example
-    path: /mcp
-    backend: mj-edge
-  - host: hitch.your-domain.example
-    path: /mcp
-    backend: mj-edge
-  - host: kevis.your-domain.example
-    path: /mcp
-    backend: mj-edge
+
+project_lanes:
+  - tenant_id: kevis
+    domain: kevis.online
+    launch_posture: mj_first_until_app_ready
+    public_surface: mj_controlled_authority_holding_surface
+    app_surface: kevis-web_pages_staged
+    project_worker: kevis-mj-edge
+    routes:
+      - host: kevis.online
+        path: /api/*
+        backend: kevis-mj-edge
+      - host: kevis.online
+        path: /mcp/*
+        backend: mj-edge
+      - host: kevis.online
+        path: /turn/*
+        backend: mj-edge
+      - host: kevis.online
+        path: /audit/*
+        backend: mj-edge
+    storage:
+      r2_bucket: kevis-media
+      kv_namespace: mj-edge-shared
+      privacy: mixed_signed_private_by_default
+  - tenant_id: hitch
+    domain: hitch.guru
+    launch_posture: pending_cloudflare_transfer
+    public_surface: confirm_origin_before_cutover
+    routes:
+      - host: hitch.guru
+        path: /mcp/*
+        backend: mj-edge
+      - host: hitch.guru
+        path: /turn/*
+        backend: mj-edge
+      - host: hitch.guru
+        path: /audit/*
+        backend: mj-edge
+
 policies:
   allowed_paths:
     - /mcp
+    - /mcp/*
     - /turn/*
     - /audit/*
     - /healthz
@@ -31,3 +79,5 @@ policies:
     - x-request-id
     - x-policy-version
     - x-operator-capability
+  deny_by_default: true
+  audit_required: true
