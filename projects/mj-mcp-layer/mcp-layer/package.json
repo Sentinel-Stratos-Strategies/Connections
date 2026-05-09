@@ -1,35 +1,17 @@
 {
-  "name": "ellis-aegis",
-  "version": "0.1.0",
+  "name": "mj-mcp-layer",
+  "version": "1.0.0",
   "private": true,
-  "description": "Cloudflare bootstrap workspace for the Ellis Aegis vault.",
+  "description": "MJ MCP Edge Layer — Multi-tenant policy enforcement, MCP routing, and control plane Worker.",
   "scripts": {
-    "cf:doctor": "bash ./scripts/cf-doctor.sh",
-    "cf:audit": "bash ./scripts/cloudflare-posture-audit.sh",
-    "cf:login": "bash ./scripts/wrangler-local.sh login",
-    "cf:whoami": "bash ./scripts/wrangler-local.sh whoami",
-    "cf:auth:token": "bash ./scripts/wrangler-local.sh auth token --json",
-    "cf:api:verify": "bash ./scripts/cloudflare-api.sh GET /user/tokens/verify",
-    "cf:bootstrap": "bash ./scripts/bootstrap-post-signup.sh",
-    "cf:zone:sweep": "bash ./scripts/public-zone-sweep.sh",
-    "cf:email:addresses": "bash ./scripts/cloudflare-email-routing.sh list-addresses",
-    "cf:email:dns": "bash ./scripts/cloudflare-email-routing.sh routing-dns",
-    "cf:email:defaults": "bash ./scripts/cloudflare-email-routing.sh create-default-aliases",
-    "cf:r2:list": "bash ./scripts/cloudflare-r2-storage.sh list",
-    "cf:r2:init": "bash ./scripts/cloudflare-r2-storage.sh init",
-    "cf:repos:discover": "bash ./scripts/discover-git-repos.sh",
-    "cf:backup:repos": "bash ./scripts/backup-storage.sh repos",
-    "cf:backup:codex": "bash ./scripts/backup-storage.sh codex",
-    "cf:backup:state": "bash ./scripts/backup-storage.sh state",
-    "cf:backup:inventory": "bash ./scripts/backup-storage.sh inventory",
-    "cf:backup:all": "bash ./scripts/backup-storage.sh all",
-    "cf:backup:upload": "bash ./scripts/backup-storage.sh upload-staged",
-    "cf:security:audit": "bash ./scripts/cloudflare-security-backup-audit.sh",
-    "cf:security:sync": "bash ./scripts/cloudflare-security-backup-audit.sh --sync",
-    "cf:dev": "bash ./scripts/wrangler-local.sh dev",
-    "cf:deploy": "bash ./scripts/wrangler-local.sh deploy"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "typescript": "^5.7.0",
     "wrangler": "^4.76.0"
   }
 }
