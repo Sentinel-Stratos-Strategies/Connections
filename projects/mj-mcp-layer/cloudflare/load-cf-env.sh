@@ -18,15 +18,22 @@ if [[ -z "${CF_ZONE_ID:-}" && -n "${CLOUDFLARE_ZONE_ID:-}" ]]; then
 fi
 
 # Optional fallback from wrangler oauth token if present and unexpired.
-# Useful for read operations; write scopes still depend on the token itself.
 if [[ -z "${CF_API_TOKEN:-}" ]]; then
-  WRANGLER_CFG="${HOME}/Library/Preferences/.wrangler/config/default.toml"
-  if [[ -f "$WRANGLER_CFG" ]]; then
+  WRANGLER_CFG=""
+  if [[ -f "${HOME}/Library/Preferences/.wrangler/config/default.toml" ]]; then
+    WRANGLER_CFG="${HOME}/Library/Preferences/.wrangler/config/default.toml"
+  elif [[ -f "${HOME}/.config/.wrangler/config/default.toml" ]]; then
+    WRANGLER_CFG="${HOME}/.config/.wrangler/config/default.toml"
+  fi
+  if [[ -n "$WRANGLER_CFG" && -f "$WRANGLER_CFG" ]]; then
     token=$(sed -n 's/^oauth_token = "\(.*\)"/\1/p' "$WRANGLER_CFG" | head -n1 || true)
     expiry=$(sed -n 's/^expiration_time = "\(.*\)"/\1/p' "$WRANGLER_CFG" | head -n1 || true)
     if [[ -n "$token" && -n "$expiry" ]]; then
       now_epoch=$(date -u +%s)
-      exp_epoch=$(date -u -j -f "%Y-%m-%dT%H:%M:%S" "${expiry%.*}" +%s 2>/dev/null || echo 0)
+      # Try GNU date first, fall back to BSD date
+      exp_epoch=$(date -u -d "${expiry%.*}" +%s 2>/dev/null \
+        || date -u -j -f "%Y-%m-%dT%H:%M:%S" "${expiry%.*}" +%s 2>/dev/null \
+        || echo 0)
       if [[ "$exp_epoch" -gt "$now_epoch" ]]; then
         export CF_API_TOKEN="$token"
       fi

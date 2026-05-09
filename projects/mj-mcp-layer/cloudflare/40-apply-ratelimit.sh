@@ -3,7 +3,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./load-cf-env.sh
 source "$SCRIPT_DIR/load-cf-env.sh"
-BASELINE="${BASELINE:-./docs/security-baseline.yaml}"
+BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
 ART_DIR="${ART_DIR:-./artifacts}"
 LOG="$ART_DIR/run-log.jsonl"
 mkdir -p "$ART_DIR"
@@ -34,6 +34,7 @@ if [[ -z "$rs_id" ]]; then
 fi
 [[ -z "$rs_id" ]] && { echo "❌ unable to resolve ratelimit ruleset id"; exit 2; }
 
+rl_failures=0
 rules=$(echo "$baseline_json" | jq -c '.rate_limits[]')
 while IFS= read -r rule; do
   [[ -z "$rule" ]] && continue
@@ -45,19 +46,36 @@ while IFS= read -r rule; do
   timeout=$(echo "$rule" | jq -r '.mitigation_timeout_seconds')
   existing=$(echo "$entry" | jq -c --arg d "$desc" '.result.rules[]? | select(.description==$d)' | head -n1)
   payload=$(jq -nc --arg d "$desc" --arg e "$expr" --arg a "$action" --argjson rpp "$rpp" --argjson p "$period" --argjson t "$timeout" '{description:$d,expression:$e,action:$a,enabled:true,ratelimit:{characteristics:["ip.src","cf.colo.id"],period:$p,requests_per_period:$rpp,mitigation_timeout:$t}}')
+
+  want_fp=$(echo "$payload" | jq -c '{expression,action,ratelimit}' | sha256sum | cut -d' ' -f1)
+
   if [[ -z "$existing" ]]; then
     echo "  [+] $desc"
-    req ratelimit POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload" >/dev/null
+    result=$(req ratelimit POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload") || {
+      echo "  ❌ Failed to create rule: $desc"
+      log_json "$(jq -nc --arg d "$desc" '{stage:"ratelimit",event:"rule_create_failed",description:$d}')"
+      ((rl_failures++)) || true
+      continue
+    }
   else
     ex_id=$(echo "$existing" | jq -r '.id')
-    ex_expr=$(echo "$existing" | jq -r '.expression')
-    if [[ "$ex_expr" != "$expr" ]]; then
-      echo "  [~] $desc"
-      req ratelimit PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload" >/dev/null
-    else
-      echo "  [=] $desc"
+    existing_fp=$(echo "$existing" | jq -c '{expression,action,ratelimit}' | sha256sum | cut -d' ' -f1)
+    if [[ "$want_fp" == "$existing_fp" ]]; then
+      echo "  [=] $desc (no changes, skipping)"
+      continue
     fi
+    echo "  [~] $desc"
+    result=$(req ratelimit PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload") || {
+      echo "  ❌ Failed to update rule: $desc"
+      log_json "$(jq -nc --arg d "$desc" '{stage:"ratelimit",event:"rule_update_failed",description:$d}')"
+      ((rl_failures++)) || true
+      continue
+    }
   fi
 done <<< "$rules"
 
+if [[ $rl_failures -gt 0 ]]; then
+  echo "⚠️ rate limit stage completed with $rl_failures failure(s)"
+  exit 1
+fi
 echo "✅ rate limit stage complete"

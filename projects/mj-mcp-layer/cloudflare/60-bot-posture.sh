@@ -3,7 +3,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./load-cf-env.sh
 source "$SCRIPT_DIR/load-cf-env.sh"
-BASELINE="${BASELINE:-./docs/security-baseline.yaml}"
+BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
 ART_DIR="${ART_DIR:-./artifacts}"
 LOG="$ART_DIR/run-log.jsonl"
 mkdir -p "$ART_DIR"

@@ -3,7 +3,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./load-cf-env.sh
 source "$SCRIPT_DIR/load-cf-env.sh"
-BASELINE="${BASELINE:-./docs/security-baseline.yaml}"
+BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
 ART_DIR="${ART_DIR:-./artifacts}"
 LOG="$ART_DIR/run-log.jsonl"
 mkdir -p "$ART_DIR"
@@ -41,9 +41,11 @@ rs_id=$(echo "$entry" | jq -r '.result.id // empty')
 if [[ -z "$rs_id" ]]; then
   create=$(req waf POST "/zones/$CF_ZONE_ID/rulesets" '{"name":"MJ MCP Custom WAF","kind":"zone","phase":"http_request_firewall_custom","rules":[]}')
   rs_id=$(echo "$create" | jq -r '.result.id // empty')
+  entry=$(req waf GET "/zones/$CF_ZONE_ID/rulesets/phases/http_request_firewall_custom/entrypoint")
 fi
 [[ -z "$rs_id" ]] && { echo "❌ unable to resolve waf ruleset id"; exit 2; }
 
+waf_failures=0
 rules=$(echo "$baseline_json" | jq -c '.waf_rules[]')
 while IFS= read -r rule; do
   [[ -z "$rule" ]] && continue
@@ -52,19 +54,48 @@ while IFS= read -r rule; do
   action=$(echo "$rule" | jq -r '.action')
   existing=$(echo "$entry" | jq -c --arg d "$desc" '.result.rules[]? | select(.description==$d)' | head -n1)
   payload=$(jq -nc --arg d "$desc" --arg e "$expr" --arg a "$action" '{description:$d,expression:$e,action:$a,enabled:true}')
+
+  want_fingerprint=$(echo "$payload" | jq -c '{expression,action}' | sha256sum | cut -d' ' -f1)
+
   if [[ -z "$existing" ]]; then
     echo "  [+] $desc"
-    req waf POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload" >/dev/null
+    result=$(req waf POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload") || {
+      echo "  ❌ Failed to create rule: $desc"
+      log_json "$(jq -nc --arg d "$desc" '{stage:"waf",event:"rule_create_failed",description:$d}')"
+      ((waf_failures++)) || true
+      continue
+    }
+    ok=$(echo "$result" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected rule: $desc"
+      log_json "$(jq -nc --arg d "$desc" --argjson r "$result" '{stage:"waf",event:"rule_create_rejected",description:$d,response:$r}')"
+      ((waf_failures++)) || true
+    fi
   else
     ex_id=$(echo "$existing" | jq -r '.id')
-    ex_expr=$(echo "$existing" | jq -r '.expression')
-    if [[ "$ex_expr" != "$expr" ]]; then
-      echo "  [~] $desc"
-      req waf PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload" >/dev/null
-    else
-      echo "  [=] $desc"
+    existing_fingerprint=$(echo "$existing" | jq -c '{expression,action}' | sha256sum | cut -d' ' -f1)
+    if [[ "$want_fingerprint" == "$existing_fingerprint" ]]; then
+      echo "  [=] $desc (no changes, skipping)"
+      continue
+    fi
+    echo "  [~] $desc"
+    result=$(req waf PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload") || {
+      echo "  ❌ Failed to update rule: $desc"
+      log_json "$(jq -nc --arg d "$desc" '{stage:"waf",event:"rule_update_failed",description:$d}')"
+      ((waf_failures++)) || true
+      continue
+    }
+    ok=$(echo "$result" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected rule update: $desc"
+      log_json "$(jq -nc --arg d "$desc" --argjson r "$result" '{stage:"waf",event:"rule_update_rejected",description:$d,response:$r}')"
+      ((waf_failures++)) || true
     fi
   fi
 done <<< "$rules"
 
+if [[ $waf_failures -gt 0 ]]; then
+  echo "⚠️ WAF stage completed with $waf_failures failure(s)"
+  exit 1
+fi
 echo "✅ WAF stage complete"

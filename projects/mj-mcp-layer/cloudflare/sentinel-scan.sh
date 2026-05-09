@@ -9,7 +9,7 @@ source "$SCRIPT_DIR/load-cf-env.sh"
 
 ART_DIR="${ART_DIR:-./artifacts}"
 LEDGER="${LEDGER:-$ART_DIR/codex-ledger.jsonl}"
-BASELINE="${BASELINE:-./docs/security-baseline.yaml}"
+BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
 mkdir -p "$ART_DIR"
 
 TS=$(date -u +%Y%m%dT%H%M%SZ)

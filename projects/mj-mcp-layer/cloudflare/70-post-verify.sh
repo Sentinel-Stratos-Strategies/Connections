@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ART_DIR="${ART_DIR:-./artifacts}"
 mkdir -p "$ART_DIR"
 
-./scripts/10-inventory-cf.sh after
-./scripts/20-health-check.sh
+bash "$SCRIPT_DIR/10-inventory-cf.sh" after
+bash "$SCRIPT_DIR/20-health-check.sh"
 
 jq -n \
   --slurpfile b "$ART_DIR/inventory-before.json" \
