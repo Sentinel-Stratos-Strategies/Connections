@@ -1,0 +1,61 @@
+version: 1
+name: "unified-mcp-security"
+targetProviders: ["cloudflare", "aws", "kubernetes"]
+
+zones:
+  - name: "primary"
+    cloudflare:
+      domains: ["your-domain.example"]
+    aws:
+      regions: ["us-east-1", "us-west-2"]
+      vpcIds: []
+    kubernetes:
+      clusters: ["prod-us-east", "prod-eu-west"]
+
+securityDefaults:
+  denyByDefault: true
+  requiredHeaders:
+    - x-tenant-id
+    - x-request-id
+    - x-policy-version
+    - x-operator-capability
+
+policies:
+  waf:
+    rules:
+      - name: "block-malicious-user-agents"
+        expression: '(cf.bot_management.score lt 30)'
+        awsExpression: "ByteMatchStatement for user-agent"
+        k8sSelector: "app=mcp"
+        action: "block"
+      - name: "block-non-mcp-paths"
+        expression: 'not (http.request.uri.path in {"/mcp" "/turn" "/audit" "/healthz" "/api"})'
+        action: "block"
+      - name: "require-tenant-header"
+        expression: 'not any(http.request.headers["x-tenant-id"][*] ne "")'
+        action: "block"
+
+  rateLimit:
+    rules:
+      - name: "mcp-soft-cap"
+        requests: 120
+        period: 60
+        action: "challenge"
+      - name: "mcp-hard-cap"
+        requests: 300
+        period: 60
+        action: "block"
+
+rbac:
+  tenants:
+    - id: "kevis"
+      capabilities: ["script.run", "forensic.read", "mcp.admin"]
+      rateLimit: "120/min"
+    - id: "hitch"
+      capabilities: ["script.run", "forensic.read", "cloud.ops", "mcp.admin"]
+      rateLimit: "120/min"
+
+audit:
+  enabled: true
+  retention: "90 days"
+  immutable: true
