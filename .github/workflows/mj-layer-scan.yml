@@ -1,0 +1,76 @@
+name: MJ Layer Drift Scan
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - zone_name: your-domain.example
+            zone_id_secret: CF_ZONE_ID_ELLIS
+          - zone_name: hitch.guru
+            zone_id_secret: CF_ZONE_ID_HITCH
+          - zone_name: kevis.online
+            zone_id_secret: CF_ZONE_ID_KEVIS
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: MJ_Layer
+
+      - name: Resolve zone id
+        id: zone
+        shell: bash
+        env:
+          CF_ZONE_ID_ELLIS: ${{ secrets.CF_ZONE_ID_ELLIS }}
+          CF_ZONE_ID_HITCH: ${{ secrets.CF_ZONE_ID_HITCH }}
+          CF_ZONE_ID_KEVIS: ${{ secrets.CF_ZONE_ID_KEVIS }}
+        run: |
+          key='${{ matrix.zone_id_secret }}'
+          val="$(printenv "$key" || true)"
+          if [ -z "$val" ]; then
+            echo "Missing secret $key — skipping zone"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "zone_id=$val" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Run sentinel scan
+        if: steps.zone.outputs.skip != 'true'
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ steps.zone.outputs.zone_id }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          cd projects/mj-mcp-layer
+          bash cloudflare/sentinel-scan.sh
+
+      - name: Upload drift report
+        if: always() && steps.zone.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report-${{ matrix.zone_name }}
+          path: |
+            projects/mj-mcp-layer/artifacts/drift-*.md
+            projects/mj-mcp-layer/artifacts/scan-*.json
+            projects/mj-mcp-layer/artifacts/ALERT-*.md
+
+      - name: Alert on drift
+        if: failure() && steps.zone.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ALERT_FILE=$(ls projects/mj-mcp-layer/artifacts/ALERT-*.md 2>/dev/null | head -1)
+          if [ -f "$ALERT_FILE" ]; then
+            gh issue create \
+              --title "Drift detected in ${{ matrix.zone_name }} zone" \
+              --body "$(cat "$ALERT_FILE")" \
+              --label drift,critical \
+              || echo "Could not create issue (labels may not exist)"
+          fi

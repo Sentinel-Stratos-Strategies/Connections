@@ -24,6 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install yaml parser
+        run: npm install -g yaml
+
       - name: Resolve zone id
         id: zone
         shell: bash
@@ -34,32 +42,76 @@ jobs:
         run: |
           key='${{ matrix.zone_id_secret }}'
           val="$(printenv "$key" || true)"
-          [ -n "$val" ] || { echo "Missing secret $key"; exit 1; }
+          if [ -z "$val" ]; then
+            echo "Missing secret $key — skipping zone"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "zone_id=$val" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: Prepare env
+        if: steps.zone.outputs.skip != 'true'
         run: |
-          cp projects/mj-mcp-layer/templates/.env.example .env || true
-          if [ ! -f .env ]; then
-            cat > .env <<EOT
-CF_ZONE_ID=${{ steps.zone.outputs.zone_id }}
-CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}
-EOT
-          fi
-          sed -i "s|CF_ZONE_ID=YOUR_ZONE_ID|CF_ZONE_ID=${{ steps.zone.outputs.zone_id }}|" .env || true
-          sed -i "s|CF_API_TOKEN=YOUR_CLOUDFLARE_API_TOKEN|CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}|" .env || true
+          cd projects/mj-mcp-layer
+          cat > .env <<EOT
+          CF_ZONE_ID=${{ steps.zone.outputs.zone_id }}
+          CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}
+          EOT
 
       - name: Preflight
-        run: bash projects/mj-mcp-layer/cloudflare/00-preflight.sh
+        if: steps.zone.outputs.skip != 'true'
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ steps.zone.outputs.zone_id }}
+        run: |
+          cd projects/mj-mcp-layer
+          bash cloudflare/00-preflight.sh
 
       - name: Harden
-        run: bash projects/mj-mcp-layer/cloudflare/99-run-cloudflare-hardening.sh
+        if: steps.zone.outputs.skip != 'true'
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ steps.zone.outputs.zone_id }}
+        run: |
+          cd projects/mj-mcp-layer
+          bash cloudflare/99-run-cloudflare-hardening.sh
 
       - name: Scan
-        run: bash projects/mj-mcp-layer/cloudflare/sentinel-scan.sh
+        if: steps.zone.outputs.skip != 'true'
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ steps.zone.outputs.zone_id }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          cd projects/mj-mcp-layer
+          bash cloudflare/sentinel-scan.sh
 
       - name: Upload artifacts
+        if: always() && steps.zone.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: mj-layer-${{ matrix.zone_name }}
-          path: artifacts/**
+          path: projects/mj-mcp-layer/artifacts/**
+
+  health-check:
+    runs-on: ubuntu-latest
+    needs: harden-and-scan
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run health checks
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID_ELLIS }}
+        run: |
+          cd projects/mj-mcp-layer
+          bash cloudflare/20-health-check.sh
+
+      - name: Upload health results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-check-results
+          path: projects/mj-mcp-layer/artifacts/health-*.json
