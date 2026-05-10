@@ -22,11 +22,15 @@ import { PolicyCompiler } from "../core/policy-compiler.js";
 import { EvidenceEngine } from "../core/evidence-engine.js";
 import { MutationTester } from "../core/mutation-tester.js";
 import { RollbackEngine } from "../core/rollback-engine.js";
+import { RuntimeVerifier } from "../core/runtime-verifier.js";
+import { DigitalTwin } from "../core/digital-twin.js";
+import { DriftClassifier } from "../automation/drift-classifier.js";
 
 const COMMANDS = [
   "init",
   "health-check",
   "drift-scan",
+  "drift-classify",
   "compliance-check",
   "policy-apply",
   "policy-validate",
@@ -34,6 +38,8 @@ const COMMANDS = [
   "intent",
   "prove",
   "plan",
+  "verify",
+  "simulate",
   "change-request",
   "auto-remediate",
   "ledger-view",
@@ -53,6 +59,7 @@ COMMANDS:
   init                Initialize configuration
   health-check        Run health checks across providers
   drift-scan          Scan for unauthorized configuration drift
+  drift-classify      Classify drift by severity with immune response
   compliance-check    Validate compliance posture
   policy-apply        Apply a security policy
   policy-validate     Validate a policy file without applying
@@ -60,6 +67,8 @@ COMMANDS:
   intent              Compile an intent into a full execution plan
   prove               Run mutation tests against a policy
   plan                Generate and test a rollback recipe
+  verify              Run runtime verification against live audit events
+  simulate            Run digital twin simulation for a policy change
   change-request      Submit a change request for approval
   auto-remediate      Detect drift and remediate with approval
   ledger-view         View recent ledger entries
@@ -93,6 +102,9 @@ EXAMPLES:
   mcp-cli intent --intent "protect /mcp from unauthenticated bursts" --tenant kevis
   mcp-cli prove --file policy.yaml --endpoint https://worker.dev
   mcp-cli plan --file policy.yaml --provider cloudflare
+  mcp-cli verify --file policy.yaml --endpoint https://worker.dev --since "1 hour ago"
+  mcp-cli simulate --file policy.yaml --provider cloudflare
+  mcp-cli drift-classify --provider cloudflare
   mcp-cli auto-remediate --provider cloudflare
   mcp-cli ledger-view --since "2026-05-01"
 `;
@@ -142,7 +154,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const adapterRequiredCommands = new Set<Command>(["health-check", "drift-scan", "compliance-check", "policy-apply", "change-request", "auto-remediate", "intent", "plan"]);
+  const adapterRequiredCommands = new Set<Command>(["health-check", "drift-scan", "drift-classify", "compliance-check", "policy-apply", "change-request", "auto-remediate", "intent", "plan", "simulate"]);
   const commandRequiresAdapters = adapterRequiredCommands.has(command)
     && !(command === "policy-apply" && values["dry-run"]);
   const adapters = buildAdapters(values.provider, values["all-providers"], !commandRequiresAdapters);
@@ -172,6 +184,9 @@ async function main(): Promise<void> {
     case "drift-scan":
       await handleDriftScan(orchestrator, values.format ?? "text");
       break;
+    case "drift-classify":
+      await handleDriftClassify(orchestrator, adapters, values.format ?? "text");
+      break;
     case "compliance-check":
       await handleComplianceCheck(adapters, values.format ?? "text");
       break;
@@ -192,6 +207,12 @@ async function main(): Promise<void> {
       break;
     case "plan":
       await handlePlan(adapters, ledger, values.file, values.format ?? "text");
+      break;
+    case "verify":
+      await handleVerify(values.file, values.endpoint, values.since, values.format ?? "text");
+      break;
+    case "simulate":
+      await handleSimulate(adapters, values.file, values.format ?? "text");
       break;
     case "change-request":
       await handleChangeRequestSubmit(orchestrator, ledger, adapters, values.file, values.name);
@@ -564,6 +585,143 @@ async function handlePlan(
     console.error("\nRollback test FAILED — this plan should not be deployed without fixing the recipe.");
     process.exit(1);
   }
+}
+
+async function handleVerify(
+  filePath?: string,
+  endpoint?: string,
+  since?: string,
+  format?: string,
+): Promise<void> {
+  if (!filePath) {
+    console.error("--file is required for verify. Provide a policy YAML file.");
+    process.exit(1);
+  }
+  if (!endpoint) {
+    console.error("--endpoint is required for verify. Provide the Worker URL.");
+    process.exit(1);
+  }
+
+  const policy = loadPolicyFile(filePath);
+  const verifier = new RuntimeVerifier();
+  const monitors = verifier.generateMonitors(policy);
+
+  console.log(`Generated ${monitors.length} runtime monitors from policy\n`);
+
+  const authToken = process.env.OPERATOR_TOKEN ?? process.env.MCP_HEALTH_TOKEN;
+  const results = await verifier.fetchAndVerify(monitors, {
+    endpoint,
+    auth_token: authToken,
+    since: since ?? new Date(Date.now() - 3600000).toISOString(),
+    limit: 200,
+  });
+
+  if (format === "json") {
+    console.log(JSON.stringify(results, null, 2));
+  } else {
+    console.log(verifier.formatResults(results));
+  }
+
+  const failed = results.filter((r) => !r.passed);
+  if (failed.length > 0) process.exit(1);
+}
+
+async function handleSimulate(
+  adapters: Map<ProviderName, ProviderAdapter>,
+  filePath?: string,
+  format?: string,
+): Promise<void> {
+  if (!filePath) {
+    console.error("--file is required for simulate. Provide a policy YAML file.");
+    process.exit(1);
+  }
+
+  const policy = loadPolicyFile(filePath);
+  const translator = new PolicyTranslator();
+  const compiler = new PolicyCompiler(translator);
+  const tester = new MutationTester();
+  const twin = new DigitalTwin(tester);
+
+  const firstAdapter = adapters.values().next().value;
+  const inventory = firstAdapter
+    ? await firstAdapter.getInventory()
+    : { provider: "cloudflare" as const, timestamp: new Date().toISOString(), resources: {} };
+
+  const intentRequest = {
+    intent: `apply policy ${policy.name}`,
+    tenant: "operator",
+    risk_tolerance: "low" as const,
+    rollback_required: true,
+    target_providers: policy.targetProviders,
+  };
+
+  const plan = compiler.compile(intentRequest, inventory, adapters);
+
+  const currentPolicy: SecurityPolicy = {
+    version: 0,
+    name: "current",
+    targetProviders: policy.targetProviders,
+    zones: [],
+    securityDefaults: { denyByDefault: true, requiredHeaders: [] },
+    policies: { waf: { rules: [] }, rateLimit: { rules: [] } },
+    rbac: { tenants: [] },
+    audit: { enabled: true, retention: "90 days", immutable: true },
+  };
+
+  const result = twin.simulate(inventory, currentPolicy, plan);
+
+  if (format === "json") {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log(twin.formatAsPRComment(result));
+  }
+
+  if (!result.passed) process.exit(1);
+}
+
+async function handleDriftClassify(
+  orchestrator: CrossProviderOrchestrator,
+  adapters: Map<ProviderName, ProviderAdapter>,
+  format: string,
+): Promise<void> {
+  const antibodyPath = resolve("cloudflare/antibodies.yaml");
+  const classifier = new DriftClassifier(antibodyPath);
+  const scanner = new DriftScanner(orchestrator);
+  const driftReports = await scanner.scanAllProviders();
+
+  let hasIssues = false;
+
+  for (const [providerName] of adapters) {
+    const driftReport = driftReports.find((r) => r.provider === providerName)
+      ?? { provider: providerName, timestamp: new Date().toISOString(), unauthorizedChanges: [], severity: "ok" as const };
+
+    if (driftReport.unauthorizedChanges.length === 0) {
+      console.log(`[${providerName}] No drift to classify.`);
+      continue;
+    }
+
+    const context = {
+      provider: providerName,
+      recent_incidents: 0,
+      recent_changes: driftReport.unauthorizedChanges.length,
+      has_active_incident: false,
+      operator_online: true,
+    };
+
+    const report = classifier.classifyReport(driftReport, context);
+
+    if (format === "json") {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log(classifier.formatReport(report));
+    }
+
+    if (report.severity_counts.active_threat > 0 || report.severity_counts.policy_violation > 0) {
+      hasIssues = true;
+    }
+  }
+
+  if (hasIssues) process.exit(1);
 }
 
 async function handlePolicyTranslate(

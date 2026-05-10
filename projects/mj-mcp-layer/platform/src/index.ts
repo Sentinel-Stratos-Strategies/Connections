@@ -5,5 +5,7 @@ export * from "./core/policy-compiler.js";
 export * from "./core/evidence-engine.js";
 export * from "./core/mutation-tester.js";
 export * from "./core/rollback-engine.js";
+export * from "./core/runtime-verifier.js";
+export * from "./core/digital-twin.js";
 export * from "./adapters/index.js";
 export * from "./automation/index.js";
