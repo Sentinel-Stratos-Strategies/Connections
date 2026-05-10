@@ -1,4 +1,4 @@
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type {
@@ -109,21 +109,6 @@ export class EvidenceEngine {
       }
     }
 
-    const bundleData = {
-      plan_id: plan.id,
-      intent: plan.intent,
-      diff: plan.policy_diff,
-      before: inventoryBefore?.timestamp,
-      after: inventoryAfter?.timestamp,
-      results: executionReport?.results,
-      verification_count: verificationResults.length,
-      test_count: mutationTestResults.length,
-    };
-
-    const hash = createHash("sha256")
-      .update(JSON.stringify(bundleData))
-      .digest("hex");
-
     const bundle: EvidenceBundle = {
       id: `evidence-${plan.id}-${Date.now()}`,
       version: "1.0",
@@ -143,32 +128,34 @@ export class EvidenceEngine {
       evidence_requirements: plan.evidence_requirements,
       evidence_satisfied: evidenceSatisfied,
       evidence_missing: evidenceMissing,
-      hash,
+      hash: "",
       signature: "",
     };
 
+    bundle.hash = this.hashBundle(bundle);
     bundle.signature = this.signBundle(bundle);
     return bundle;
   }
 
   signBundle(bundle: EvidenceBundle): string {
-    const payload = JSON.stringify({
-      id: bundle.id,
-      hash: bundle.hash,
-      timestamp: bundle.timestamp,
-      plan_id: bundle.compiled_plan_id,
-      requirements_met: bundle.evidence_satisfied.length,
-      requirements_total: bundle.evidence_requirements.length,
-    });
-
     return createHmac("sha256", this.signingKey)
-      .update(payload)
+      .update(canonicalStringify({ ...bundle, signature: "" }))
       .digest("hex");
   }
 
   verifyBundle(bundle: EvidenceBundle): boolean {
-    const expected = this.signBundle({ ...bundle, signature: "" });
-    return bundle.signature === expected;
+    const expectedHash = this.hashBundle(bundle);
+    if (bundle.hash !== expectedHash) return false;
+
+    const expectedSignature = this.signBundle({ ...bundle, signature: "" });
+    try {
+      return timingSafeEqual(
+        Buffer.from(bundle.signature, "hex"),
+        Buffer.from(expectedSignature, "hex"),
+      );
+    } catch {
+      return false;
+    }
   }
 
   isComplete(bundle: EvidenceBundle): boolean {
@@ -311,4 +298,22 @@ export class EvidenceEngine {
         return false;
     }
   }
+
+  private hashBundle(bundle: EvidenceBundle): string {
+    return createHash("sha256")
+      .update(canonicalStringify({ ...bundle, hash: "", signature: "" }))
+      .digest("hex");
+  }
+}
+
+function canonicalStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalStringify(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalStringify(item)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }

@@ -5,7 +5,9 @@ import type {
   HealthStatus,
   InventorySnapshot,
   LedgerEntry,
+  RateLimitRule,
   SecurityPolicy,
+  WafRule,
 } from "../core/types.js";
 import { createHash } from "node:crypto";
 
@@ -14,6 +16,32 @@ interface CloudflareConfig {
   zoneId: string;
   accountId?: string;
 }
+
+interface CloudflareResponse<T = unknown> {
+  success?: boolean;
+  result?: T;
+  errors?: Array<{ code?: number; message?: string }>;
+  messages?: unknown[];
+}
+
+interface CloudflareRuleset {
+  id: string;
+  name?: string;
+  phase?: string;
+  rules?: CloudflareRule[];
+}
+
+interface CloudflareRule {
+  id: string;
+  description?: string;
+  expression?: string;
+  action?: string;
+  enabled?: boolean;
+  ratelimit?: unknown;
+  action_parameters?: unknown;
+}
+
+type RulesetPhase = "http_request_firewall_custom" | "http_ratelimit";
 
 export class CloudflareAdapter implements ProviderAdapter {
   readonly name = "cloudflare" as const;
@@ -24,7 +52,12 @@ export class CloudflareAdapter implements ProviderAdapter {
     this.config = config;
   }
 
-  private async cfRequest(method: string, path: string, body?: unknown): Promise<unknown> {
+  private async cfRequest<T = unknown>(
+    method: string,
+    path: string,
+    body?: unknown,
+    options: { allowFailure?: boolean } = {},
+  ): Promise<CloudflareResponse<T>> {
     const url = `${this.apiBase}${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.config.apiToken}`,
@@ -35,17 +68,22 @@ export class CloudflareAdapter implements ProviderAdapter {
     if (body) init.body = JSON.stringify(body);
 
     const response = await fetch(url, init);
-    return response.json();
+    const payload = await response.json() as CloudflareResponse<T>;
+    if (!options.allowFailure && (!response.ok || payload.success === false)) {
+      const reason = payload.errors?.map((err) => err.message ?? err.code).join("; ") || response.statusText;
+      throw new Error(`Cloudflare ${method} ${path} failed: ${reason}`);
+    }
+    return payload;
   }
 
   async getInventory(): Promise<InventorySnapshot> {
     const [rulesets, waf, ratelimit, cache, dns, workerRoutes] = await Promise.all([
       this.cfRequest("GET", `/zones/${this.config.zoneId}/rulesets`),
-      this.cfRequest("GET", `/zones/${this.config.zoneId}/rulesets/phases/http_request_firewall_custom/entrypoint`).catch(() => ({})),
-      this.cfRequest("GET", `/zones/${this.config.zoneId}/rulesets/phases/http_ratelimit/entrypoint`).catch(() => ({})),
-      this.cfRequest("GET", `/zones/${this.config.zoneId}/rulesets/phases/http_request_cache_settings/entrypoint`).catch(() => ({})),
+      this.cfRequest("GET", `/zones/${this.config.zoneId}/rulesets/phases/http_request_firewall_custom/entrypoint`, undefined, { allowFailure: true }),
+      this.cfRequest("GET", `/zones/${this.config.zoneId}/rulesets/phases/http_ratelimit/entrypoint`, undefined, { allowFailure: true }),
+      this.cfRequest("GET", `/zones/${this.config.zoneId}/rulesets/phases/http_request_cache_settings/entrypoint`, undefined, { allowFailure: true }),
       this.cfRequest("GET", `/zones/${this.config.zoneId}/dns_records?per_page=500`),
-      this.cfRequest("GET", `/zones/${this.config.zoneId}/workers/routes`).catch(() => ({})),
+      this.cfRequest("GET", `/zones/${this.config.zoneId}/workers/routes`, undefined, { allowFailure: true }),
     ]);
 
     return {
@@ -64,12 +102,14 @@ export class CloudflareAdapter implements ProviderAdapter {
 
     if (policy.policies.waf) {
       for (const rule of policy.policies.waf.rules) {
-        changes.push(`waf:${rule.name}`);
+        const change = await this.upsertWafRule(rule);
+        changes.push(change);
       }
     }
     if (policy.policies.rateLimit) {
       for (const rule of policy.policies.rateLimit.rules) {
-        changes.push(`ratelimit:${rule.name}`);
+        const change = await this.upsertRateLimitRule(rule);
+        changes.push(change);
       }
     }
 
@@ -85,6 +125,22 @@ export class CloudflareAdapter implements ProviderAdapter {
   }
 
   async revertPolicy(version: string): Promise<ChangeRequest> {
+    const target = version.replace(/^rollback-/, "");
+    const [resourceType, ...nameParts] = target.split(":");
+    const description = nameParts.join(":");
+
+    if (!description) {
+      throw new Error(`Cannot revert Cloudflare policy without a resource description: ${version}`);
+    }
+
+    if (resourceType === "waf-rule") {
+      await this.deleteRuleByDescription("http_request_firewall_custom", description);
+    } else if (resourceType === "ratelimit-rule") {
+      await this.deleteRuleByDescription("http_ratelimit", description);
+    } else {
+      throw new Error(`Unsupported Cloudflare rollback resource: ${resourceType}`);
+    }
+
     return {
       id: crypto.randomUUID(),
       name: `revert-to-${version}`,
@@ -101,8 +157,8 @@ export class CloudflareAdapter implements ProviderAdapter {
     if (!policy.securityDefaults?.denyByDefault) {
       errors.push("deny_by_default must be enabled");
     }
-    if (!policy.policies?.waf?.rules?.length) {
-      errors.push("at least one WAF rule is required");
+    if (!policy.policies?.waf?.rules?.length && !policy.policies?.rateLimit?.rules?.length) {
+      errors.push("at least one WAF or rate limit rule is required");
     }
     return { ok: errors.length === 0, errors };
   }
@@ -119,7 +175,7 @@ export class CloudflareAdapter implements ProviderAdapter {
   async healthCheck(): Promise<HealthStatus> {
     const start = Date.now();
     try {
-      const result = await this.cfRequest("GET", `/zones/${this.config.zoneId}`) as { success?: boolean };
+      const result = await this.cfRequest("GET", `/zones/${this.config.zoneId}`);
       const latency = Date.now() - start;
       return { ok: result.success === true, latency };
     } catch (error) {
@@ -129,7 +185,7 @@ export class CloudflareAdapter implements ProviderAdapter {
 
   async validateAccess(): Promise<AccessValidation> {
     try {
-      const result = await this.cfRequest("GET", "/user/tokens/verify") as { success?: boolean };
+      const result = await this.cfRequest("GET", "/user/tokens/verify");
       return { ok: result.success === true };
     } catch (error) {
       return { ok: false, errors: [String(error)] };
@@ -142,7 +198,7 @@ export class CloudflareAdapter implements ProviderAdapter {
     const result = await this.cfRequest(
       "GET",
       `/accounts/${this.config.accountId}/audit_logs?since=${sinceStr}&per_page=200`,
-    ) as { result?: Array<{ when: string; action: { type: string }; actor: { email: string } }> };
+    ) as CloudflareResponse<Array<{ when: string; action: { type: string }; actor: { email: string } }>>;
 
     return (result.result ?? []).map((entry) => ({
       ts: entry.when,
@@ -159,4 +215,97 @@ export class CloudflareAdapter implements ProviderAdapter {
   async recordChange(entry: LedgerEntry): Promise<void> {
     console.log(`[cloudflare] ledger entry: ${entry.intent} ${entry.hash}`);
   }
+
+  private async upsertWafRule(rule: WafRule): Promise<string> {
+    const ruleset = await this.ensureRuleset("http_request_firewall_custom", "MJ MCP Custom WAF");
+    const existing = ruleset.rules?.find((candidate) => candidate.description === rule.name);
+    const payload = {
+      description: rule.name,
+      expression: rule.expression,
+      action: rule.action,
+      enabled: true,
+    };
+
+    if (!existing) {
+      await this.cfRequest("POST", `/zones/${this.config.zoneId}/rulesets/${ruleset.id}/rules`, payload);
+      return `waf:create:${rule.name}`;
+    }
+
+    if (fingerprintRule(existing) === fingerprintRule(payload)) {
+      return `waf:skip:${rule.name}`;
+    }
+
+    await this.cfRequest("PATCH", `/zones/${this.config.zoneId}/rulesets/${ruleset.id}/rules/${existing.id}`, payload);
+    return `waf:update:${rule.name}`;
+  }
+
+  private async upsertRateLimitRule(rule: RateLimitRule): Promise<string> {
+    const ruleset = await this.ensureRuleset("http_ratelimit", "MJ MCP Rate Limit");
+    const existing = ruleset.rules?.find((candidate) => candidate.description === rule.name);
+    const payload = {
+      description: rule.name,
+      expression: `(http.request.uri.path eq "/mcp")`,
+      action: rule.action,
+      enabled: true,
+      ratelimit: {
+        characteristics: ["ip.src", "cf.colo.id"],
+        period: rule.period,
+        requests_per_period: rule.requests,
+        mitigation_timeout: rule.period,
+      },
+    };
+
+    if (!existing) {
+      await this.cfRequest("POST", `/zones/${this.config.zoneId}/rulesets/${ruleset.id}/rules`, payload);
+      return `ratelimit:create:${rule.name}`;
+    }
+
+    if (fingerprintRule(existing) === fingerprintRule(payload)) {
+      return `ratelimit:skip:${rule.name}`;
+    }
+
+    await this.cfRequest("PATCH", `/zones/${this.config.zoneId}/rulesets/${ruleset.id}/rules/${existing.id}`, payload);
+    return `ratelimit:update:${rule.name}`;
+  }
+
+  private async ensureRuleset(phase: RulesetPhase, name: string): Promise<CloudflareRuleset> {
+    const entrypoint = await this.cfRequest<CloudflareRuleset>(
+      "GET",
+      `/zones/${this.config.zoneId}/rulesets/phases/${phase}/entrypoint`,
+      undefined,
+      { allowFailure: true },
+    );
+    if (entrypoint.success === true && entrypoint.result?.id) {
+      return entrypoint.result;
+    }
+
+    const created = await this.cfRequest<CloudflareRuleset>(
+      "POST",
+      `/zones/${this.config.zoneId}/rulesets`,
+      { name, kind: "zone", phase, rules: [] },
+    );
+    if (!created.result?.id) {
+      throw new Error(`Cloudflare did not return a ruleset id for ${phase}`);
+    }
+    return created.result;
+  }
+
+  private async deleteRuleByDescription(phase: RulesetPhase, description: string): Promise<void> {
+    const ruleset = await this.ensureRuleset(phase, phase === "http_ratelimit" ? "MJ MCP Rate Limit" : "MJ MCP Custom WAF");
+    const existing = ruleset.rules?.find((candidate) => candidate.description === description);
+    if (!existing) return;
+    await this.cfRequest("DELETE", `/zones/${this.config.zoneId}/rulesets/${ruleset.id}/rules/${existing.id}`);
+  }
+}
+
+function fingerprintRule(rule: Partial<CloudflareRule>): string {
+  return createHash("sha256")
+    .update(JSON.stringify({
+      expression: rule.expression,
+      action: rule.action,
+      enabled: rule.enabled,
+      ratelimit: rule.ratelimit,
+      action_parameters: rule.action_parameters,
+    }))
+    .digest("hex");
 }

@@ -73,8 +73,8 @@ export class RuntimeVerifier {
         results.push({
           monitor_id: monitor.id,
           assertion: monitor.assertion,
-          passed: true,
-          observed: "no relevant events (vacuously true)",
+          passed: monitor.severity === "info",
+          observed: "no relevant events available to verify this monitor",
           timestamp: new Date().toISOString(),
         });
         continue;
@@ -157,7 +157,7 @@ export class RuntimeVerifier {
           if (meta.headers && typeof meta.headers === "object") {
             return header in (meta.headers as Record<string, unknown>);
           }
-          return true;
+          return false;
         },
       });
     }
@@ -178,6 +178,7 @@ export class RuntimeVerifier {
           if (typeof meta.path === "string" && (meta.path as string).startsWith("/turn")) {
             return meta.method === "POST" || meta.method === "OPTIONS";
           }
+          if (event.category === "turn.execute" && (!meta.path || !meta.method)) return false;
           return true;
         },
       },
@@ -192,6 +193,7 @@ export class RuntimeVerifier {
           if (typeof meta.path === "string" && (meta.path as string).startsWith("/audit")) {
             return meta.method === "GET" || meta.method === "OPTIONS";
           }
+          if (event.category === "audit.query" && (!meta.path || !meta.method)) return false;
           return true;
         },
       },
@@ -344,9 +346,9 @@ export class RuntimeVerifier {
 
   private isRelevantEvent(event: AuditEvent, monitor: RuntimeMonitor): boolean {
     const categoryMap: Record<MonitorCategory, string[]> = {
-      header_presence: ["mcp.execute", "turn.execute"],
-      method_enforcement: ["mcp.execute", "turn.execute"],
-      path_enforcement: ["mcp.execute", "turn.execute"],
+      header_presence: ["mcp.execute", "turn.execute", "audit.query"],
+      method_enforcement: ["mcp.execute", "turn.execute", "audit.query"],
+      path_enforcement: ["mcp.execute", "turn.execute", "audit.query"],
       auth_validation: ["auth.failure", "mcp.execute", "turn.execute"],
       rate_limit: ["ratelimit.triggered"],
       policy_version: ["policy.mismatch"],
@@ -388,7 +390,7 @@ export class RuntimeVerifier {
 }
 
 function isMcpEvent(event: AuditEvent): boolean {
-  return event.category === "mcp.execute" || event.category === "turn.execute";
+  return event.category === "mcp.execute" || event.category === "turn.execute" || event.category === "audit.query";
 }
 
 function parseMetadata(metadata: string | Record<string, unknown>): Record<string, unknown> {

@@ -198,6 +198,37 @@ export class PolicyCompiler {
     };
   }
 
+  compilePolicy(
+    intent: IntentRequest,
+    policy: SecurityPolicy,
+    currentInventory: InventorySnapshot,
+  ): CompiledPlan {
+    const id = createHash("sha256")
+      .update(JSON.stringify({ intent, policy }) + Date.now())
+      .digest("hex")
+      .slice(0, 16);
+
+    const blastRadius = this.estimateBlastRadius(intent, policy, currentInventory);
+    const testCases = this.generateTestCases(policy);
+    const rollbackRecipe = this.generateRollbackRecipe(policy, currentInventory);
+    const evidenceRequirements = this.determineEvidenceRequirements(blastRadius);
+    const approvalPath = this.determineApprovalPath(intent, blastRadius);
+
+    return {
+      id,
+      intent,
+      timestamp: new Date().toISOString(),
+      policy,
+      policy_diff: this.generatePolicyDiff(policy, currentInventory),
+      provider_plans: this.generateProviderPlans(policy),
+      blast_radius: blastRadius,
+      test_cases: testCases,
+      rollback_recipe: rollbackRecipe,
+      evidence_requirements: evidenceRequirements,
+      approval_path: approvalPath,
+    };
+  }
+
   intentToPolicy(intent: IntentRequest): SecurityPolicy {
     for (const template of INTENT_TEMPLATES) {
       const match = intent.intent.match(template.pattern);

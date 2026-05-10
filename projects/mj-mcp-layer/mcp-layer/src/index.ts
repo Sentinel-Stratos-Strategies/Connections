@@ -126,7 +126,7 @@ export default {
     }
 
     if (path.startsWith("/audit/") && request.method === "GET") {
-      return handleAudit(request, env, path);
+      return handleAudit(request, env, ctx, path);
     }
 
     // ---------- API Endpoints ----------
@@ -262,7 +262,7 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
     actor: auth.actor,
     category: "mcp.execute",
     message: `MCP method=${method} tenant=${tenantId}`,
-    metadata: JSON.stringify({ method, tenantId, requestId }),
+    metadata: JSON.stringify(buildAuditMetadata(request, { mcpMethod: method, tenantId, requestId })),
     severity: "info",
     source: "worker",
   }));
@@ -317,7 +317,7 @@ async function handleTurn(request: Request, env: Env, ctx: ExecutionContext, pat
     actor: auth.actor,
     category: "turn.execute",
     message: `Turn request tenant=${tenantId} turn=${turnId}`,
-    metadata: JSON.stringify({ tenantId, turnId, requestId }),
+    metadata: JSON.stringify(buildAuditMetadata(request, { tenantId, turnId, requestId })),
     severity: "info",
     source: "worker",
   }));
@@ -332,7 +332,7 @@ async function handleTurn(request: Request, env: Env, ctx: ExecutionContext, pat
   }, { env, request, status: 202 });
 }
 
-async function handleAudit(request: Request, env: Env, path: string): Promise<Response> {
+async function handleAudit(request: Request, env: Env, ctx: ExecutionContext, path: string): Promise<Response> {
   const policyCheck = enforceMcpPolicy(request, "GET", "/audit/*");
   if (policyCheck) return json(policyCheck, { env, request, status: 403 });
 
@@ -343,6 +343,15 @@ async function handleAudit(request: Request, env: Env, path: string): Promise<Re
   const since = url.searchParams.get("since");
   const category = url.searchParams.get("category");
   const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 200);
+
+  ctx.waitUntil(logEvent(env, {
+    actor: auth.actor,
+    category: "audit.query",
+    message: `Audit query path=${path}`,
+    metadata: JSON.stringify(buildAuditMetadata(request, { since, category, limit })),
+    severity: "info",
+    source: "worker",
+  }));
 
   if (!env.DB) {
     return json({ events: [], message: "D1 not configured" }, { env, request });
@@ -584,6 +593,21 @@ function parseCapabilityHeader(headerValue: string | null): string[] {
 
 function hasAnyCapability(provided: string[], allowed: string[]): boolean {
   return provided.some((capability) => allowed.includes(capability));
+}
+
+function buildAuditMetadata(request: Request, extra: JsonRecord): JsonRecord {
+  const url = new URL(request.url);
+  return {
+    ...extra,
+    method: request.method,
+    path: url.pathname,
+    headers: {
+      "x-tenant-id": request.headers.get("x-tenant-id") ?? "",
+      "x-request-id": request.headers.get("x-request-id") ?? "",
+      "x-policy-version": request.headers.get("x-policy-version") ?? "",
+      "x-operator-capability": request.headers.get("x-operator-capability") ?? "",
+    },
+  };
 }
 
 // ---------- Auth ----------

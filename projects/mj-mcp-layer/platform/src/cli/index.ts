@@ -175,7 +175,11 @@ async function main(): Promise<void> {
   }
   const backend = new FileLedgerBackend(artifactDir);
   const ledger = new UniversalLedger(backend, ledgerKey ?? "unused-for-readiness-checks", adapters);
-  const orchestrator = new CrossProviderOrchestrator(adapters, ledger);
+  const evidenceEngine = ledgerKey ? new EvidenceEngine(ledgerKey, artifactDir) : undefined;
+  const orchestrator = new CrossProviderOrchestrator(adapters, ledger, {
+    evidenceEngine,
+    requireRollbackTest: true,
+  });
 
   switch (command) {
     case "health-check":
@@ -570,7 +574,7 @@ async function handlePlan(
     target_providers: policy.targetProviders,
   };
 
-  const plan = compiler.compile(intentRequest, inventory, adapters);
+  const plan = compiler.compilePolicy(intentRequest, policy, inventory);
   const recipe = rollbackEngine.generateRecipe(plan, inventory);
   const testResult = await rollbackEngine.testRecipe(recipe, inventory, inventory);
 
@@ -655,7 +659,7 @@ async function handleSimulate(
     target_providers: policy.targetProviders,
   };
 
-  const plan = compiler.compile(intentRequest, inventory, adapters);
+  const plan = compiler.compilePolicy(intentRequest, policy, inventory);
 
   const currentPolicy: SecurityPolicy = {
     version: 0,

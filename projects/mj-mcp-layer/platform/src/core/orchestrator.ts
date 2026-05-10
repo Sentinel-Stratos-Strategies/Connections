@@ -8,17 +8,28 @@ import type {
   SecurityPolicy,
 } from "./types.js";
 import type { UniversalLedger } from "./ledger.js";
+import type { EvidenceEngine } from "./evidence-engine.js";
+import { PolicyCompiler } from "./policy-compiler.js";
+import { RollbackEngine } from "./rollback-engine.js";
+
+interface OrchestratorOptions {
+  evidenceEngine?: EvidenceEngine;
+  requireRollbackTest?: boolean;
+}
 
 export class CrossProviderOrchestrator {
   private adapters: Map<ProviderName, ProviderAdapter>;
   private ledger: UniversalLedger;
+  private options: OrchestratorOptions;
 
   constructor(
     adapters: Map<ProviderName, ProviderAdapter>,
     ledger: UniversalLedger,
+    options: OrchestratorOptions = {},
   ) {
     this.adapters = adapters;
     this.ledger = ledger;
+    this.options = options;
   }
 
   async applyPolicyToAllProviders(policy: SecurityPolicy): Promise<ExecutionReport> {
@@ -27,6 +38,35 @@ export class CrossProviderOrchestrator {
       results: {},
       ledgerEntries: [],
     };
+
+    const compiler = new PolicyCompiler();
+    const rollbackEngine = new RollbackEngine(this.adapters, this.ledger);
+    const firstAdapter = Array.from(this.adapters.values())[0];
+    const baselineInventory = firstAdapter
+      ? await firstAdapter.getInventory()
+      : {
+          provider: (policy.targetProviders[0] ?? "cloudflare") as ProviderName,
+          timestamp: new Date().toISOString(),
+          resources: {},
+        };
+    const plan = compiler.compilePolicy(
+      {
+        intent: `apply policy ${policy.name}`,
+        tenant: "operator",
+        risk_tolerance: "low",
+        rollback_required: true,
+        target_providers: policy.targetProviders,
+      },
+      policy,
+      baselineInventory,
+    );
+    const rollbackTest = await rollbackEngine.testRecipe(plan.rollback_recipe, baselineInventory, baselineInventory);
+    if (this.options.requireRollbackTest !== false && !rollbackTest.simulation_passed) {
+      throw new Error(`Rollback test failed: ${rollbackTest.issues.join("; ")}`);
+    }
+
+    let evidenceBefore: typeof baselineInventory | undefined = baselineInventory;
+    let evidenceAfter: typeof baselineInventory | undefined;
 
     for (const [providerName, adapter] of this.adapters) {
       if (!policy.targetProviders.includes(providerName)) continue;
@@ -44,6 +84,10 @@ export class CrossProviderOrchestrator {
         const preInventory = await adapter.getInventory();
         const changeRequest = await adapter.applyPolicy(policy);
         const postInventory = await adapter.getInventory();
+        if (providerName === baselineInventory.provider) {
+          evidenceBefore = preInventory;
+          evidenceAfter = postInventory;
+        }
 
         const ledgerEntry: LedgerEntry = {
           ts: new Date().toISOString(),
@@ -86,6 +130,18 @@ export class CrossProviderOrchestrator {
           reason: String(error),
         };
       }
+    }
+
+    if (this.options.evidenceEngine) {
+      const bundle = this.options.evidenceEngine.createBundle({
+        plan,
+        inventoryBefore: evidenceBefore,
+        inventoryAfter: evidenceAfter,
+        executionReport: report,
+        rollbackTested: rollbackTest.simulation_passed,
+        ledgerEntries: report.ledgerEntries.map((entry) => this.ledger.sign(entry)),
+      });
+      this.options.evidenceEngine.persistBundle(bundle);
     }
 
     return report;

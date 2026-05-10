@@ -182,6 +182,7 @@ export class DriftClassifier {
   classifyReport(
     report: DriftReport,
     context: DriftContext,
+    options: { persistNewAntibodies?: boolean } = {},
   ): ClassifiedDriftReport {
     const classified: ClassifiedDrift[] = [];
     const newAntibodies: Antibody[] = [];
@@ -193,7 +194,9 @@ export class DriftClassifier {
       if (result.severity !== "harmless" && !result.matched_antibody) {
         const antibody = this.generateAntibody(result);
         newAntibodies.push(antibody);
-        this.antibodies.push(antibody);
+        if (options.persistNewAntibodies) {
+          this.antibodies.push(antibody);
+        }
       }
     }
 
@@ -210,7 +213,7 @@ export class DriftClassifier {
 
     const actions = this.generateRecommendedActions(classified);
 
-    if (newAntibodies.length > 0) {
+    if (options.persistNewAntibodies && newAntibodies.length > 0) {
       this.saveAntibodies();
     }
 
