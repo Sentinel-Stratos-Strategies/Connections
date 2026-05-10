@@ -18,6 +18,10 @@ import { HealthCheckAggregator } from "../automation/health-aggregator.js";
 import { ChangeRequestWorkflow } from "../automation/change-request-workflow.js";
 import { AutoRemediation } from "../automation/auto-remediation.js";
 import { PolicyTranslator } from "../automation/policy-translator.js";
+import { PolicyCompiler } from "../core/policy-compiler.js";
+import { EvidenceEngine } from "../core/evidence-engine.js";
+import { MutationTester } from "../core/mutation-tester.js";
+import { RollbackEngine } from "../core/rollback-engine.js";
 
 const COMMANDS = [
   "init",
@@ -27,6 +31,9 @@ const COMMANDS = [
   "policy-apply",
   "policy-validate",
   "policy-translate",
+  "intent",
+  "prove",
+  "plan",
   "change-request",
   "auto-remediate",
   "ledger-view",
@@ -50,6 +57,9 @@ COMMANDS:
   policy-apply        Apply a security policy
   policy-validate     Validate a policy file without applying
   policy-translate    Translate policy between providers
+  intent              Compile an intent into a full execution plan
+  prove               Run mutation tests against a policy
+  plan                Generate and test a rollback recipe
   change-request      Submit a change request for approval
   auto-remediate      Detect drift and remediate with approval
   ledger-view         View recent ledger entries
@@ -69,6 +79,9 @@ OPTIONS:
   --to <provider>     Target provider for translation
   --auto-approve      Skip approval gate (auto-remediate only)
   --name <name>       Change request name
+  --tenant <name>     Tenant ID for intent compilation
+  --endpoint <url>    Target endpoint for mutation tests
+  --risk <level>      Risk tolerance: low, medium, high
 
 EXAMPLES:
   mcp-cli health-check --all-providers
@@ -77,6 +90,9 @@ EXAMPLES:
   mcp-cli policy-apply --file policy.yaml --dry-run
   mcp-cli policy-translate --file policy.yaml --from cloudflare --to aws
   mcp-cli change-request --file policy.yaml --name "enable-mfa" --provider cloudflare
+  mcp-cli intent --intent "protect /mcp from unauthenticated bursts" --tenant kevis
+  mcp-cli prove --file policy.yaml --endpoint https://worker.dev
+  mcp-cli plan --file policy.yaml --provider cloudflare
   mcp-cli auto-remediate --provider cloudflare
   mcp-cli ledger-view --since "2026-05-01"
 `;
@@ -98,6 +114,10 @@ async function main(): Promise<void> {
       to: { type: "string" },
       "auto-approve": { type: "boolean", default: false },
       name: { type: "string" },
+      intent: { type: "string" },
+      tenant: { type: "string" },
+      endpoint: { type: "string" },
+      risk: { type: "string" },
     },
   });
 
@@ -122,7 +142,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const adapterRequiredCommands = new Set<Command>(["health-check", "drift-scan", "compliance-check", "policy-apply", "change-request", "auto-remediate"]);
+  const adapterRequiredCommands = new Set<Command>(["health-check", "drift-scan", "compliance-check", "policy-apply", "change-request", "auto-remediate", "intent", "plan"]);
   const commandRequiresAdapters = adapterRequiredCommands.has(command)
     && !(command === "policy-apply" && values["dry-run"]);
   const adapters = buildAdapters(values.provider, values["all-providers"], !commandRequiresAdapters);
@@ -163,6 +183,15 @@ async function main(): Promise<void> {
       break;
     case "policy-translate":
       await handlePolicyTranslate(values.file, values.from, values.to);
+      break;
+    case "intent":
+      await handleIntent(adapters, values.intent, values.tenant, values.risk, values.format ?? "text");
+      break;
+    case "prove":
+      await handleProve(values.file, values.endpoint, values.format ?? "text");
+      break;
+    case "plan":
+      await handlePlan(adapters, ledger, values.file, values.format ?? "text");
       break;
     case "change-request":
       await handleChangeRequestSubmit(orchestrator, ledger, adapters, values.file, values.name);
@@ -395,6 +424,146 @@ async function handlePolicyValidate(
   }
 
   if (hasErrors) process.exit(1);
+}
+
+async function handleIntent(
+  adapters: Map<ProviderName, ProviderAdapter>,
+  intentText?: string,
+  tenant?: string,
+  risk?: string,
+  format?: string,
+): Promise<void> {
+  if (!intentText) {
+    console.error("--intent is required. Example: --intent 'protect /mcp from unauthenticated bursts'");
+    process.exit(1);
+  }
+
+  const translator = new PolicyTranslator();
+  const compiler = new PolicyCompiler(translator);
+
+  const intentRequest = {
+    intent: intentText,
+    tenant: tenant ?? "default",
+    risk_tolerance: (risk as "low" | "medium" | "high") ?? "low",
+    rollback_required: true,
+    target_providers: Array.from(adapters.keys()) as ProviderName[],
+  };
+
+  const firstAdapter = adapters.values().next().value;
+  const inventory = firstAdapter
+    ? await firstAdapter.getInventory()
+    : { provider: "cloudflare" as const, timestamp: new Date().toISOString(), resources: {} };
+
+  const plan = compiler.compile(intentRequest, inventory, adapters);
+
+  if (format === "json") {
+    console.log(JSON.stringify(plan, null, 2));
+  } else {
+    console.log(`# Compiled Plan: ${plan.id}\n`);
+    console.log(`Intent: "${plan.intent.intent}"`);
+    console.log(`Tenant: ${plan.intent.tenant}`);
+    console.log(`Risk tolerance: ${plan.intent.risk_tolerance}`);
+    console.log(`Approval path: ${plan.approval_path}`);
+    console.log(`\n## Blast Radius\n`);
+    console.log(`  Risk: ${plan.blast_radius.estimated_risk}`);
+    console.log(`  Tenants: ${plan.blast_radius.tenants_affected.join(", ")}`);
+    console.log(`  Endpoints: ${plan.blast_radius.endpoints_affected.join(", ")}`);
+    console.log(`  Providers: ${plan.blast_radius.providers_affected.join(", ")}`);
+    console.log(`  Reversible: ${plan.blast_radius.reversible}`);
+    console.log(`\n${plan.policy_diff}`);
+    console.log(`## Test Cases: ${plan.test_cases.length}`);
+    for (const tc of plan.test_cases) {
+      console.log(`  - ${tc.name}: ${tc.expected_outcome}`);
+    }
+    console.log(`\n## Rollback: ${plan.rollback_recipe.steps.length} steps (${plan.rollback_recipe.estimated_duration_seconds}s)`);
+    console.log(`\n## Evidence Required: ${plan.evidence_requirements.join(", ")}`);
+  }
+}
+
+async function handleProve(
+  filePath?: string,
+  endpoint?: string,
+  format?: string,
+): Promise<void> {
+  if (!filePath) {
+    console.error("--file is required for prove. Provide a policy YAML file.");
+    process.exit(1);
+  }
+
+  const policy = loadPolicyFile(filePath);
+  const tester = new MutationTester();
+  const mutants = tester.generateMutants(policy);
+
+  console.log(`Generated ${mutants.length} mutants from policy\n`);
+
+  if (endpoint) {
+    console.log(`Running mutants against ${endpoint}...\n`);
+    const report = await tester.runMutants(mutants, { endpoint });
+
+    if (format === "json") {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log(tester.formatReport(report));
+    }
+
+    if (!report.passed) process.exit(1);
+  } else {
+    console.log("No --endpoint provided. Listing generated mutants (dry run):\n");
+    for (const mutant of mutants) {
+      console.log(`  [${mutant.category}] ${mutant.name}`);
+      console.log(`    ${mutant.description}`);
+      console.log(`    ${mutant.request.method} ${mutant.request.path} -> expect ${mutant.expected_outcome}`);
+      if (mutant.request.repeat) console.log(`    repeat: ${mutant.request.repeat}x`);
+      console.log("");
+    }
+    console.log(`Total: ${mutants.length} mutants. Use --endpoint <url> to run them.`);
+  }
+}
+
+async function handlePlan(
+  adapters: Map<ProviderName, ProviderAdapter>,
+  ledger: UniversalLedger,
+  filePath?: string,
+  format?: string,
+): Promise<void> {
+  if (!filePath) {
+    console.error("--file is required for plan. Provide a policy YAML file.");
+    process.exit(1);
+  }
+
+  const policy = loadPolicyFile(filePath);
+  const translator = new PolicyTranslator();
+  const compiler = new PolicyCompiler(translator);
+  const rollbackEngine = new RollbackEngine(adapters, ledger);
+
+  const firstAdapter = adapters.values().next().value;
+  const inventory = firstAdapter
+    ? await firstAdapter.getInventory()
+    : { provider: "cloudflare" as const, timestamp: new Date().toISOString(), resources: {} };
+
+  const intentRequest = {
+    intent: `apply policy ${policy.name}`,
+    tenant: "operator",
+    risk_tolerance: "low" as const,
+    rollback_required: true,
+    target_providers: policy.targetProviders,
+  };
+
+  const plan = compiler.compile(intentRequest, inventory, adapters);
+  const recipe = rollbackEngine.generateRecipe(plan, inventory);
+  const testResult = await rollbackEngine.testRecipe(recipe, inventory, inventory);
+
+  if (format === "json") {
+    console.log(JSON.stringify({ plan: plan.id, recipe, test: testResult }, null, 2));
+  } else {
+    console.log(rollbackEngine.formatRecipe(recipe));
+    console.log("\n" + rollbackEngine.formatTestResult(testResult));
+  }
+
+  if (!testResult.simulation_passed) {
+    console.error("\nRollback test FAILED — this plan should not be deployed without fixing the recipe.");
+    process.exit(1);
+  }
 }
 
 async function handlePolicyTranslate(
