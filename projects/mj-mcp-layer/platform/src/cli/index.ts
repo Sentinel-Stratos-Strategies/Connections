@@ -9,11 +9,15 @@ import type { ProviderAdapter } from "../adapters/provider.interface.js";
 import { CloudflareAdapter } from "../adapters/cloudflare.adapter.js";
 import { AWSAdapter } from "../adapters/aws.adapter.js";
 import { KubernetesAdapter } from "../adapters/kubernetes.adapter.js";
+import { TerraformAdapter } from "../adapters/terraform.adapter.js";
 import { UniversalLedger, FileLedgerBackend } from "../core/ledger.js";
 import { CrossProviderOrchestrator } from "../core/orchestrator.js";
 import { DriftScanner } from "../automation/drift-scanner.js";
 import { ComplianceChecker } from "../automation/compliance-checker.js";
 import { HealthCheckAggregator } from "../automation/health-aggregator.js";
+import { ChangeRequestWorkflow } from "../automation/change-request-workflow.js";
+import { AutoRemediation } from "../automation/auto-remediation.js";
+import { PolicyTranslator } from "../automation/policy-translator.js";
 
 const COMMANDS = [
   "init",
@@ -22,6 +26,9 @@ const COMMANDS = [
   "compliance-check",
   "policy-apply",
   "policy-validate",
+  "policy-translate",
+  "change-request",
+  "auto-remediate",
   "ledger-view",
   "ledger-verify",
   "help",
@@ -42,12 +49,15 @@ COMMANDS:
   compliance-check    Validate compliance posture
   policy-apply        Apply a security policy
   policy-validate     Validate a policy file without applying
+  policy-translate    Translate policy between providers
+  change-request      Submit a change request for approval
+  auto-remediate      Detect drift and remediate with approval
   ledger-view         View recent ledger entries
   ledger-verify       Verify ledger signature integrity
   help                Show this help
 
 OPTIONS:
-  --provider <name>   Target specific provider (cloudflare, aws, kubernetes)
+  --provider <name>   Target specific provider (cloudflare, aws, kubernetes, terraform)
   --all-providers     Target all configured providers
   --file <path>       Path to policy YAML file
   --format <fmt>      Output format (text, json) [default: text]
@@ -55,12 +65,19 @@ OPTIONS:
   --output <path>     Write output to file
   --dry-run           Preview changes without applying
   --config <path>     Path to config file [default: mcp-config.yaml]
+  --from <provider>   Source provider for translation
+  --to <provider>     Target provider for translation
+  --auto-approve      Skip approval gate (auto-remediate only)
+  --name <name>       Change request name
 
 EXAMPLES:
   mcp-cli health-check --all-providers
   mcp-cli drift-scan --provider cloudflare
   mcp-cli compliance-check --format json
   mcp-cli policy-apply --file policy.yaml --dry-run
+  mcp-cli policy-translate --file policy.yaml --from cloudflare --to aws
+  mcp-cli change-request --file policy.yaml --name "enable-mfa" --provider cloudflare
+  mcp-cli auto-remediate --provider cloudflare
   mcp-cli ledger-view --since "2026-05-01"
 `;
 
@@ -77,6 +94,10 @@ async function main(): Promise<void> {
       "dry-run": { type: "boolean", default: false },
       config: { type: "string", default: "mcp-config.yaml" },
       help: { type: "boolean", default: false },
+      from: { type: "string" },
+      to: { type: "string" },
+      "auto-approve": { type: "boolean", default: false },
+      name: { type: "string" },
     },
   });
 
@@ -134,6 +155,15 @@ async function main(): Promise<void> {
       break;
     case "policy-validate":
       await handlePolicyValidate(adapters, values.file);
+      break;
+    case "policy-translate":
+      await handlePolicyTranslate(values.file, values.from, values.to);
+      break;
+    case "change-request":
+      await handleChangeRequestSubmit(orchestrator, ledger, adapters, values.file, values.name);
+      break;
+    case "auto-remediate":
+      await handleAutoRemediate(orchestrator, ledger, adapters, values["auto-approve"]);
       break;
     case "ledger-view":
       console.log("[ledger] View ledger entries (storage backend query)");
@@ -228,6 +258,13 @@ function buildAdapters(
   if (shouldInclude("kubernetes")) {
     adapters.set("kubernetes", new KubernetesAdapter({
       cluster: process.env.K8S_CLUSTER ?? "default",
+    }));
+  }
+
+  if (shouldInclude("terraform")) {
+    adapters.set("terraform", new TerraformAdapter({
+      workingDir: process.env.TF_WORKING_DIR,
+      stateBackend: process.env.TF_STATE_BACKEND,
     }));
   }
 
@@ -352,6 +389,140 @@ async function handlePolicyValidate(
   }
 
   if (hasErrors) process.exit(1);
+}
+
+async function handlePolicyTranslate(
+  filePath?: string,
+  fromProvider?: string,
+  toProvider?: string,
+): Promise<void> {
+  if (!filePath) {
+    console.error("--file is required for policy-translate");
+    process.exit(1);
+  }
+  if (!fromProvider || !toProvider) {
+    console.error("--from and --to are required for policy-translate");
+    process.exit(1);
+  }
+
+  const policy = loadPolicyFile(filePath);
+  const translator = new PolicyTranslator();
+  const output = translator.translate(
+    policy,
+    fromProvider as ProviderName,
+    toProvider as ProviderName,
+  );
+  console.log(output);
+}
+
+async function handleChangeRequestSubmit(
+  orchestrator: CrossProviderOrchestrator,
+  ledger: UniversalLedger,
+  adapters: Map<ProviderName, ProviderAdapter>,
+  filePath?: string,
+  name?: string,
+): Promise<void> {
+  if (!filePath) {
+    console.error("--file is required for change-request");
+    process.exit(1);
+  }
+
+  const policy = loadPolicyFile(filePath);
+  const requestName = name ?? policy.name ?? "unnamed-change-request";
+
+  const githubConfig = process.env.GITHUB_TOKEN && process.env.GITHUB_REPO
+    ? {
+        token: process.env.GITHUB_TOKEN,
+        owner: process.env.GITHUB_REPO.split("/")[0],
+        repo: process.env.GITHUB_REPO.split("/")[1],
+      }
+    : undefined;
+
+  const workflow = new ChangeRequestWorkflow(
+    orchestrator,
+    ledger,
+    adapters,
+    githubConfig,
+  );
+
+  const result = await workflow.submitChangeRequest({
+    name: requestName,
+    requester: process.env.USER ?? "cli-operator",
+    targetProviders: policy.targetProviders,
+    policy,
+  });
+
+  if (result.status === "rejected") {
+    console.error("Change request rejected:");
+    for (const err of result.errors ?? []) {
+      console.error(`  - ${err}`);
+    }
+    process.exit(1);
+  }
+
+  console.log(`Change request submitted: ${result.id}`);
+  console.log(`  Status: ${result.status}`);
+  if (result.issueUrl) {
+    console.log(`  GitHub Issue: ${result.issueUrl}`);
+  }
+  if (result.previews) {
+    for (const [provider, preview] of Object.entries(result.previews)) {
+      console.log(`\n--- Preview: ${provider} ---`);
+      console.log(preview);
+    }
+  }
+}
+
+async function handleAutoRemediate(
+  _orchestrator: CrossProviderOrchestrator,
+  ledger: UniversalLedger,
+  adapters: Map<ProviderName, ProviderAdapter>,
+  autoApprove?: boolean,
+): Promise<void> {
+  const githubConfig = process.env.GITHUB_TOKEN && process.env.GITHUB_REPO
+    ? {
+        token: process.env.GITHUB_TOKEN,
+        owner: process.env.GITHUB_REPO.split("/")[0],
+        repo: process.env.GITHUB_REPO.split("/")[1],
+      }
+    : undefined;
+
+  const remediation = new AutoRemediation(
+    adapters,
+    ledger,
+    {
+      autoApprove: autoApprove ?? false,
+      timeoutMs: 60000,
+      notifyChannels: githubConfig ? ["console", "github"] : ["console"],
+    },
+    githubConfig,
+  );
+
+  const sixHoursAgo = new Date(Date.now() - 6 * 3600 * 1000);
+  let hasIssues = false;
+
+  for (const [providerName, _adapter] of adapters) {
+    const driftReport = await ledger.getDrift(providerName, sixHoursAgo);
+    if (driftReport.unauthorizedChanges.length === 0) {
+      console.log(`[${providerName}] No drift detected.`);
+      continue;
+    }
+
+    console.log(`[${providerName}] Drift detected — initiating remediation...`);
+    const result = await remediation.remediateWithApproval(driftReport);
+
+    if (result.status === "remediated") {
+      console.log(`[${providerName}] Remediation complete (change: ${result.changeId})`);
+    } else if (result.status === "timeout") {
+      console.log(`[${providerName}] Remediation timed out — escalated`);
+      hasIssues = true;
+    } else if (result.status === "failed") {
+      console.error(`[${providerName}] Remediation failed: ${result.message}`);
+      hasIssues = true;
+    }
+  }
+
+  if (hasIssues) process.exit(1);
 }
 
 function loadPolicyFile(filePath: string): SecurityPolicy {
