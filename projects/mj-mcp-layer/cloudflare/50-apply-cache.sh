@@ -31,6 +31,7 @@ rs_id=$(echo "$entry" | jq -r '.result.id // empty')
 if [[ -z "$rs_id" ]]; then
   create=$(req cache POST "/zones/$CF_ZONE_ID/rulesets" '{"name":"MJ MCP Cache Settings","kind":"zone","phase":"http_request_cache_settings","rules":[]}')
   rs_id=$(echo "$create" | jq -r '.result.id // empty')
+  entry=$(req cache GET "/zones/$CF_ZONE_ID/rulesets/phases/http_request_cache_settings/entrypoint")
 fi
 [[ -z "$rs_id" ]] && { echo "❌ unable to resolve cache ruleset id"; exit 2; }
 
@@ -43,7 +44,7 @@ while IFS= read -r rule; do
   existing=$(echo "$entry" | jq -c --arg d "$desc" '.result.rules[]? | select(.description==$d)' | head -n1)
   payload=$(jq -nc --arg d "$desc" --arg e "$expr" '{description:$d,expression:$e,action:"set_cache_settings",enabled:true,action_parameters:{cache:false}}')
 
-  want_fp=$(echo "$payload" | jq -c '{expression,action}' | sha256sum | cut -d' ' -f1)
+  want_fp=$(echo "$payload" | jq -c '{expression,action,enabled,action_parameters}' | sha256sum | cut -d' ' -f1)
 
   if [[ -z "$existing" ]]; then
     echo "  [+] $desc"
@@ -53,9 +54,15 @@ while IFS= read -r rule; do
       ((cache_failures++)) || true
       continue
     }
+    ok=$(echo "$result" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected rule: $desc"
+      log_json "$(jq -nc --arg d "$desc" --argjson r "$result" '{stage:"cache",event:"rule_create_rejected",description:$d,response:$r}')"
+      ((cache_failures++)) || true
+    fi
   else
     ex_id=$(echo "$existing" | jq -r '.id')
-    existing_fp=$(echo "$existing" | jq -c '{expression,action}' | sha256sum | cut -d' ' -f1)
+    existing_fp=$(echo "$existing" | jq -c '{expression,action,enabled,action_parameters}' | sha256sum | cut -d' ' -f1)
     if [[ "$want_fp" == "$existing_fp" ]]; then
       echo "  [=] $desc (no changes, skipping)"
       continue
@@ -67,6 +74,12 @@ while IFS= read -r rule; do
       ((cache_failures++)) || true
       continue
     }
+    ok=$(echo "$result" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected rule update: $desc"
+      log_json "$(jq -nc --arg d "$desc" --argjson r "$result" '{stage:"cache",event:"rule_update_rejected",description:$d,response:$r}')"
+      ((cache_failures++)) || true
+    fi
   fi
 done <<< "$rules"
 

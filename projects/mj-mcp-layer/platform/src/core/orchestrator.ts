@@ -54,8 +54,8 @@ export class CrossProviderOrchestrator {
           source: "operator",
           payload: {
             policy: { name: policy.name, version: policy.version },
-            preInventory: { timestamp: preInventory.timestamp },
-            postInventory: { timestamp: postInventory.timestamp },
+            preInventory,
+            postInventory,
           },
           result: "success",
         };

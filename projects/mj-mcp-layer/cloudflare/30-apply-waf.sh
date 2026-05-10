@@ -55,7 +55,7 @@ while IFS= read -r rule; do
   existing=$(echo "$entry" | jq -c --arg d "$desc" '.result.rules[]? | select(.description==$d)' | head -n1)
   payload=$(jq -nc --arg d "$desc" --arg e "$expr" --arg a "$action" '{description:$d,expression:$e,action:$a,enabled:true}')
 
-  want_fingerprint=$(echo "$payload" | jq -c '{expression,action}' | sha256sum | cut -d' ' -f1)
+  want_fingerprint=$(echo "$payload" | jq -c '{expression,action,enabled}' | sha256sum | cut -d' ' -f1)
 
   if [[ -z "$existing" ]]; then
     echo "  [+] $desc"
@@ -73,7 +73,7 @@ while IFS= read -r rule; do
     fi
   else
     ex_id=$(echo "$existing" | jq -r '.id')
-    existing_fingerprint=$(echo "$existing" | jq -c '{expression,action}' | sha256sum | cut -d' ' -f1)
+    existing_fingerprint=$(echo "$existing" | jq -c '{expression,action,enabled}' | sha256sum | cut -d' ' -f1)
     if [[ "$want_fingerprint" == "$existing_fingerprint" ]]; then
       echo "  [=] $desc (no changes, skipping)"
       continue

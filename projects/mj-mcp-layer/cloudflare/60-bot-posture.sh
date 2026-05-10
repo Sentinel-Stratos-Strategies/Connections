@@ -34,20 +34,46 @@ rs_id=$(echo "$entry" | jq -r '.result.id // empty')
 [[ -z "$rs_id" ]] && { echo "❌ missing firewall custom ruleset for bot exemption"; exit 2; }
 existing=$(echo "$entry" | jq -c --arg d "$desc" '.result.rules[]? | select(.description==$d)' | head -n1)
 payload=$(jq -nc --arg d "$desc" --arg e "$expr" '{description:$d,expression:$e,action:"skip",enabled:true,action_parameters:{phases:["http_request_firewall_managed"]}}')
+want_fp=$(echo "$payload" | jq -c '{expression,action,enabled,action_parameters}' | sha256sum | cut -d' ' -f1)
+bot_failures=0
 
 if [[ -z "$existing" ]]; then
   echo "  [+] bot exemption"
-  req bot POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload" >/dev/null
+  result=$(req bot POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload") || {
+    echo "  ❌ Failed to create bot exemption"
+    log_json "$(jq -nc '{stage:"bot",event:"rule_create_failed"}')"
+    ((bot_failures++)) || true
+  }
+  ok=$(echo "${result:-{}}" | jq -r '.success // false')
+  if [[ "$ok" != "true" ]]; then
+    echo "  ❌ API rejected bot exemption"
+    log_json "$(jq -nc --argjson r "${result:-{}}" '{stage:"bot",event:"rule_create_rejected",response:$r}')"
+    ((bot_failures++)) || true
+  fi
 else
   ex_id=$(echo "$existing" | jq -r '.id')
-  ex_expr=$(echo "$existing" | jq -r '.expression')
-  if [[ "$ex_expr" != "$expr" ]]; then
+  existing_fp=$(echo "$existing" | jq -c '{expression,action,enabled,action_parameters}' | sha256sum | cut -d' ' -f1)
+  if [[ "$want_fp" != "$existing_fp" ]]; then
     echo "  [~] bot exemption"
-    req bot PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload" >/dev/null
+    result=$(req bot PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload") || {
+      echo "  ❌ Failed to update bot exemption"
+      log_json "$(jq -nc '{stage:"bot",event:"rule_update_failed"}')"
+      ((bot_failures++)) || true
+    }
+    ok=$(echo "${result:-{}}" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected bot exemption update"
+      log_json "$(jq -nc --argjson r "${result:-{}}" '{stage:"bot",event:"rule_update_rejected",response:$r}')"
+      ((bot_failures++)) || true
+    fi
   else
-    echo "  [=] bot exemption"
+    echo "  [=] bot exemption (no changes, skipping)"
   fi
 fi
 
 echo "ℹ️ note: zone-level Super Bot Fight Mode tuning must be validated against plan support"
+if [[ $bot_failures -gt 0 ]]; then
+  echo "⚠️ bot posture stage completed with $bot_failures failure(s)"
+  exit 1
+fi
 echo "✅ bot posture stage complete"

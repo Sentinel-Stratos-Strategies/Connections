@@ -31,6 +31,7 @@ rs_id=$(echo "$entry" | jq -r '.result.id // empty')
 if [[ -z "$rs_id" ]]; then
   create=$(req ratelimit POST "/zones/$CF_ZONE_ID/rulesets" '{"name":"MJ MCP Rate Limit","kind":"zone","phase":"http_ratelimit","rules":[]}')
   rs_id=$(echo "$create" | jq -r '.result.id // empty')
+  entry=$(req ratelimit GET "/zones/$CF_ZONE_ID/rulesets/phases/http_ratelimit/entrypoint")
 fi
 [[ -z "$rs_id" ]] && { echo "❌ unable to resolve ratelimit ruleset id"; exit 2; }
 
@@ -47,7 +48,7 @@ while IFS= read -r rule; do
   existing=$(echo "$entry" | jq -c --arg d "$desc" '.result.rules[]? | select(.description==$d)' | head -n1)
   payload=$(jq -nc --arg d "$desc" --arg e "$expr" --arg a "$action" --argjson rpp "$rpp" --argjson p "$period" --argjson t "$timeout" '{description:$d,expression:$e,action:$a,enabled:true,ratelimit:{characteristics:["ip.src","cf.colo.id"],period:$p,requests_per_period:$rpp,mitigation_timeout:$t}}')
 
-  want_fp=$(echo "$payload" | jq -c '{expression,action,ratelimit}' | sha256sum | cut -d' ' -f1)
+  want_fp=$(echo "$payload" | jq -c '{expression,action,enabled,ratelimit}' | sha256sum | cut -d' ' -f1)
 
   if [[ -z "$existing" ]]; then
     echo "  [+] $desc"
@@ -57,9 +58,15 @@ while IFS= read -r rule; do
       ((rl_failures++)) || true
       continue
     }
+    ok=$(echo "$result" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected rule: $desc"
+      log_json "$(jq -nc --arg d "$desc" --argjson r "$result" '{stage:"ratelimit",event:"rule_create_rejected",description:$d,response:$r}')"
+      ((rl_failures++)) || true
+    fi
   else
     ex_id=$(echo "$existing" | jq -r '.id')
-    existing_fp=$(echo "$existing" | jq -c '{expression,action,ratelimit}' | sha256sum | cut -d' ' -f1)
+    existing_fp=$(echo "$existing" | jq -c '{expression,action,enabled,ratelimit}' | sha256sum | cut -d' ' -f1)
     if [[ "$want_fp" == "$existing_fp" ]]; then
       echo "  [=] $desc (no changes, skipping)"
       continue
@@ -71,6 +78,12 @@ while IFS= read -r rule; do
       ((rl_failures++)) || true
       continue
     }
+    ok=$(echo "$result" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected rule update: $desc"
+      log_json "$(jq -nc --arg d "$desc" --argjson r "$result" '{stage:"ratelimit",event:"rule_update_rejected",description:$d,response:$r}')"
+      ((rl_failures++)) || true
+    fi
   fi
 done <<< "$rules"
 

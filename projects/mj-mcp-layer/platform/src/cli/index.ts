@@ -102,12 +102,21 @@ async function main(): Promise<void> {
   }
 
   const adapters = buildAdapters(values.provider, values["all-providers"]);
+  if (adapters.size === 0) {
+    console.error("No provider adapters are configured. Set provider credentials or choose an enabled provider.");
+    process.exit(1);
+  }
   const artifactDir = resolve("artifacts");
   if (!existsSync(artifactDir)) mkdirSync(artifactDir, { recursive: true });
 
-  const ledgerKey = process.env.MCP_LEDGER_KEY ?? "mj-mcp-default-key";
+  const signedLedgerCommands = new Set<Command>(["drift-scan", "policy-apply", "ledger-view", "ledger-verify"]);
+  const ledgerKey = process.env.MCP_LEDGER_KEY;
+  if (!ledgerKey && signedLedgerCommands.has(command)) {
+    console.error("MCP_LEDGER_KEY is required for signed ledger operations.");
+    process.exit(1);
+  }
   const backend = new FileLedgerBackend(artifactDir);
-  const ledger = new UniversalLedger(backend, ledgerKey, adapters);
+  const ledger = new UniversalLedger(backend, ledgerKey ?? "unused-for-readiness-checks", adapters);
   const orchestrator = new CrossProviderOrchestrator(adapters, ledger);
 
   switch (command) {

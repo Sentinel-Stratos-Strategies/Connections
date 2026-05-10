@@ -35,21 +35,32 @@ interface PolicyConfig {
   allowed_paths: string[];
   required_headers: string[];
   method_matrix: Record<string, string[]>;
+  capability_matrix: Record<string, Record<string, string[]>>;
 }
 
 const WATCHER_KINDS: WatcherKind[] = ["edge-abuse", "drift", "origin-health", "digest"];
 
 const POLICY: PolicyConfig = {
   deny_by_default: true,
-  allowed_paths: ["/mcp", "/turn", "/audit", "/healthz"],
-  required_headers: ["x-tenant-id", "x-request-id", "x-policy-version"],
+  allowed_paths: ["/mcp", "/turn/*", "/audit/*", "/healthz"],
+  required_headers: ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
   method_matrix: {
-    "/mcp": ["GET", "POST"],
-    "/turn": ["POST"],
-    "/turn/*": ["POST"],
-    "/audit": ["GET"],
-    "/audit/*": ["GET"],
+    "/mcp": ["GET", "POST", "OPTIONS"],
+    "/turn/*": ["POST", "OPTIONS"],
+    "/audit/*": ["GET", "OPTIONS"],
     "/healthz": ["GET"],
+  },
+  capability_matrix: {
+    "/mcp": {
+      GET: ["mcp.admin", "forensic.read", "cloud.ops", "security.status"],
+      POST: ["mcp.admin"],
+    },
+    "/turn/*": {
+      POST: ["script.run", "mcp.admin"],
+    },
+    "/audit/*": {
+      GET: ["forensic.read", "mcp.admin"],
+    },
   },
 };
 
@@ -68,7 +79,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    if (request.method === "OPTIONS" && (path.startsWith("/api/") || path.startsWith("/mcp") || path.startsWith("/turn") || path.startsWith("/audit"))) {
+    if (request.method === "OPTIONS" && (path.startsWith("/api/") || path === "/mcp" || path.startsWith("/turn/") || path.startsWith("/audit/"))) {
       return buildPreflightResponse(request, env);
     }
 
@@ -113,11 +124,8 @@ export default {
     if (path.startsWith("/turn/") && request.method === "POST") {
       return handleTurn(request, env, ctx, path);
     }
-    if (path === "/turn" && request.method === "POST") {
-      return handleTurn(request, env, ctx, path);
-    }
 
-    if (path.startsWith("/audit") && request.method === "GET") {
+    if (path.startsWith("/audit/") && request.method === "GET") {
       return handleAudit(request, env, path);
     }
 
@@ -227,8 +235,8 @@ async function handleMcpList(request: Request, env: Env): Promise<Response> {
     },
     endpoints: {
       mcp: "/mcp",
-      turn: "/turn",
-      audit: "/audit",
+      turn: "/turn/{turnId}",
+      audit: "/audit/events",
       healthz: "/healthz",
     },
     policy: {
@@ -275,7 +283,8 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
   }
 
   if (method === "tools/call") {
-    const toolName = typeof body.params?.name === "string" ? body.params.name : "";
+    const params = isJsonRecord(body.params) ? body.params : {};
+    const toolName = typeof params.name === "string" ? params.name : "";
     return json({
       jsonrpc: "2.0",
       id: requestId,
@@ -293,7 +302,7 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
 }
 
 async function handleTurn(request: Request, env: Env, ctx: ExecutionContext, path: string): Promise<Response> {
-  const policyCheck = enforceMcpPolicy(request, "POST", "/turn");
+  const policyCheck = enforceMcpPolicy(request, "POST", "/turn/*");
   if (policyCheck) return json(policyCheck, { env, request, status: 403 });
 
   const auth = await authenticate(request, env);
@@ -324,7 +333,7 @@ async function handleTurn(request: Request, env: Env, ctx: ExecutionContext, pat
 }
 
 async function handleAudit(request: Request, env: Env, path: string): Promise<Response> {
-  const policyCheck = enforceMcpPolicy(request, "GET", "/audit");
+  const policyCheck = enforceMcpPolicy(request, "GET", "/audit/*");
   if (policyCheck) return json(policyCheck, { env, request, status: 403 });
 
   const auth = await authenticate(request, env);
@@ -550,7 +559,31 @@ function enforceMcpPolicy(request: Request, method: string, basePath: string): J
     };
   }
 
+  const allowedCapabilities = POLICY.capability_matrix[basePath]?.[method] ?? [];
+  if (allowedCapabilities.length > 0) {
+    const providedCapabilities = parseCapabilityHeader(request.headers.get("x-operator-capability"));
+    if (!hasAnyCapability(providedCapabilities, allowedCapabilities)) {
+      return {
+        error: "capability_not_allowed",
+        message: `${method} ${basePath} requires an allowed operator capability`,
+        allowed_capabilities: allowedCapabilities,
+      };
+    }
+  }
+
   return null;
+}
+
+function parseCapabilityHeader(headerValue: string | null): string[] {
+  if (!headerValue) return [];
+  return headerValue
+    .split(/[,\s]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function hasAnyCapability(provided: string[], allowed: string[]): boolean {
+  return provided.some((capability) => allowed.includes(capability));
 }
 
 // ---------- Auth ----------
@@ -601,11 +634,15 @@ async function authenticate(
 async function readRequestJson(request: Request): Promise<JsonRecord> {
   try {
     const payload = (await request.json()) as unknown;
-    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-      return payload as JsonRecord;
+    if (isJsonRecord(payload)) {
+      return payload;
     }
   } catch { /* empty body is fine */ }
   return {};
+}
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function readBearerToken(headerValue: string | null): string | null {
@@ -723,8 +760,8 @@ function renderHomePage(): string {
     </section>
     <section class="endpoints">
       <div class="ep"><h3>MCP Protocol</h3><p><code>GET /mcp</code> &mdash; List capabilities</p><p><code>POST /mcp</code> &mdash; Execute MCP method</p></div>
-      <div class="ep"><h3>Turn Execution</h3><p><code>POST /turn</code> &mdash; Submit a turn request</p><p><code>POST /turn/:id</code> &mdash; Continue a turn</p></div>
-      <div class="ep"><h3>Audit Trail</h3><p><code>GET /audit</code> &mdash; Query audit events</p><p><code>GET /api/ledger</code> &mdash; Immutable ledger</p></div>
+      <div class="ep"><h3>Turn Execution</h3><p><code>POST /turn/:id</code> &mdash; Submit or continue a turn</p></div>
+      <div class="ep"><h3>Audit Trail</h3><p><code>GET /audit/events</code> &mdash; Query audit events</p><p><code>GET /api/ledger</code> &mdash; Immutable ledger</p></div>
       <div class="ep"><h3>Health &amp; Ops</h3><p><code>GET /healthz</code> &mdash; Health check</p><p><code>POST /api/checks/run</code> &mdash; Run checks</p></div>
       <div class="ep"><h3>Change Requests</h3><p><code>POST /api/change-request</code> &mdash; Submit</p><p><code>GET /api/change-request</code> &mdash; List</p></div>
       <div class="ep"><h3>Resources</h3><p><code>GET /api/assets</code> <code>GET /api/events</code></p><p><code>GET /api/incidents</code></p></div>

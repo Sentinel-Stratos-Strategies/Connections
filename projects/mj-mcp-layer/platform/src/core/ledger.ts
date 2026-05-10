@@ -1,5 +1,6 @@
-import { createHmac, timingSafeEqual as cryptoTimingSafeEqual } from "node:crypto";
-import { appendFileSync, readFileSync, existsSync } from "node:fs";
+import { createHash, createHmac, timingSafeEqual as cryptoTimingSafeEqual } from "node:crypto";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type {
   DriftChange,
   DriftReport,
@@ -25,6 +26,7 @@ export class FileLedgerBackend implements LedgerBackend {
 
   async append(key: string, data: string): Promise<void> {
     const path = `${this.basePath}/${key}`;
+    mkdirSync(dirname(path), { recursive: true });
     appendFileSync(path, data + "\n");
   }
 
@@ -34,8 +36,23 @@ export class FileLedgerBackend implements LedgerBackend {
     return readFileSync(path, "utf-8");
   }
 
-  async list(_prefix: string): Promise<string[]> {
-    return [];
+  async list(prefix: string): Promise<string[]> {
+    const root = join(this.basePath, prefix);
+    if (!existsSync(root)) return [];
+
+    const keys: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(fullPath);
+          continue;
+        }
+        keys.push(fullPath.slice(this.basePath.length + 1));
+      }
+    };
+    walk(root);
+    return keys.sort();
   }
 }
 
@@ -92,7 +109,7 @@ export class UniversalLedger {
   }
 
   sign(entry: LedgerEntry): SignedEntry {
-    const payload = JSON.stringify(entry);
+    const payload = canonicalStringify(entry);
     const signature = createHmac("sha256", this.ledgerKey)
       .update(payload)
       .digest("hex");
@@ -101,7 +118,7 @@ export class UniversalLedger {
 
   verify(signed: SignedEntry): boolean {
     const recomputed = createHmac("sha256", this.ledgerKey)
-      .update(JSON.stringify(signed.entry))
+      .update(canonicalStringify(signed.entry))
       .digest("hex");
     try {
       return cryptoTimingSafeEqual(
@@ -114,19 +131,97 @@ export class UniversalLedger {
   }
 
   private async getAuthorizedChanges(provider: ProviderName, since: Date): Promise<LedgerEntry[]> {
+    const entries = await this.readSignedLedgerEntries(provider);
+    if (entries.length > 0) return entries;
+
     const adapter = this.adapters.get(provider);
     if (!adapter) return [];
     return adapter.getAuditLog(since);
   }
 
   private detectDrift(
-    _currentState: InventorySnapshot,
-    _authorizedChanges: LedgerEntry[],
+    currentState: InventorySnapshot,
+    authorizedChanges: LedgerEntry[],
   ): DriftChange[] {
-    return [];
+    const baselineEntry = [...authorizedChanges]
+      .reverse()
+      .find((entry) => entry.result === "success" && isInventorySnapshot(entry.payload.postInventory));
+
+    if (!baselineEntry || !isInventorySnapshot(baselineEntry.payload.postInventory)) {
+      return [{
+        resource: "inventory-baseline",
+        type: "modified",
+        current: hashValue(currentState.resources),
+        expected: "signed-ledger-baseline",
+      }];
+    }
+
+    const expectedInventory = baselineEntry.payload.postInventory;
+    const currentHash = hashValue(currentState.resources);
+    const expectedHash = hashValue(expectedInventory.resources);
+
+    if (currentHash === expectedHash) return [];
+
+    return [{
+      resource: `${currentState.provider}:inventory`,
+      type: "modified",
+      current: currentHash,
+      expected: expectedHash,
+    }];
   }
 
   getAdapter(provider: ProviderName): ProviderAdapter | undefined {
     return this.adapters.get(provider);
   }
+
+  private async readSignedLedgerEntries(provider: ProviderName): Promise<LedgerEntry[]> {
+    const keys = await this.storageBackend.list(`ledger/${provider}`);
+    const entries: LedgerEntry[] = [];
+
+    for (const key of keys) {
+      const content = await this.storageBackend.read(key);
+      if (!content) continue;
+
+      for (const line of content.split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        try {
+          const signed = JSON.parse(line) as SignedEntry;
+          if (!this.verify(signed)) continue;
+          const entryTime = new Date(signed.entry.ts);
+          if (Number.isNaN(entryTime.getTime())) continue;
+          entries.push(signed.entry);
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    return entries.sort((a, b) => a.ts.localeCompare(b.ts));
+  }
+}
+
+function canonicalStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalStringify(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalStringify(item)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function hashValue(value: unknown): string {
+  return createHash("sha256").update(canonicalStringify(value)).digest("hex");
+}
+
+function isInventorySnapshot(value: unknown): value is InventorySnapshot {
+  return Boolean(value)
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && typeof (value as Partial<InventorySnapshot>).provider === "string"
+    && typeof (value as Partial<InventorySnapshot>).timestamp === "string"
+    && Boolean((value as Partial<InventorySnapshot>).resources)
+    && typeof (value as Partial<InventorySnapshot>).resources === "object";
 }

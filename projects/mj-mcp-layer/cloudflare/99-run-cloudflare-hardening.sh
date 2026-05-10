@@ -32,11 +32,7 @@ fi
 check_rotation_status() {
   local baseline="$1"
   local failures=0
-  if ! command -v yq >/dev/null 2>&1; then
-    echo "⚠️ yq not installed; skipping rotation check"
-    return 0
-  fi
-  yq -r '.rotation_log[]? | select(.status=="NEEDS_ROTATION") | .date' "$baseline" 2>/dev/null | while read -r rotation_date; do
+  while read -r rotation_date; do
     [[ -z "$rotation_date" ]] && continue
     local now_epoch rotation_epoch days_old
     now_epoch=$(date +%s)
@@ -49,8 +45,24 @@ check_rotation_status() {
       echo "⚠️ ALERT: Secret rotation overdue by $days_old days (rotated: $rotation_date)"
       ((failures++)) || true
     fi
-  done
+  done < <(node -e "const fs=require('fs');const YAML=require('yaml');const p=YAML.parse(fs.readFileSync(process.argv[1],'utf8'));for (const item of p.rotation_log ?? []) if (item.status === 'NEEDS_ROTATION') console.log(item.date);" "$baseline")
   return "${failures:-0}"
+}
+
+run_rotation_stage() {
+  local name="K rotation check"
+  local ts rc
+  ts="$(date -u +%FT%TZ)"
+  echo "==> [$ts] $name"
+  set +e
+  check_rotation_status "$BASELINE"
+  rc=$?
+  set -e
+  if [[ $rc -ne 0 ]]; then
+    echo "⚠️ $name failed rc=$rc" | tee -a "$ART_DIR/stage-failures.log"
+    printf '{"ts":"%s","stage":"%s","rc":%d}\n' "$ts" "$name" "$rc" >> "$ART_DIR/run-log.jsonl"
+  fi
+  return 0
 }
 
 run_stage "A preflight"         "bash $SCRIPT_DIR/00-preflight.sh"
@@ -63,7 +75,7 @@ run_stage "F bot posture"       "bash $SCRIPT_DIR/60-bot-posture.sh"
 run_stage "G post verify"       "bash $SCRIPT_DIR/70-post-verify.sh"
 run_stage "H baseline sheet"    "bash $SCRIPT_DIR/80-generate-baseline-sheet.sh"
 run_stage "I runbooks + summary" "bash $SCRIPT_DIR/90-generate-runbooks.sh"
-run_stage "K rotation check"    "check_rotation_status '$BASELINE'"
+run_rotation_stage
 
 echo "✅ automation run complete"
 echo "Artifacts: $ART_DIR"

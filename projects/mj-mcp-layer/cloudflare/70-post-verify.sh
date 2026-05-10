@@ -19,10 +19,6 @@ jq -r '
 "## Cache", ("- before: " + ((.before.cache.result.rules|length|tostring) // "0")), ("- after: " + ((.after.cache.result.rules|length|tostring) // "0"))
 ' "$ART_DIR/inventory-joined.json" > "$ART_DIR/diff.md"
 
-if npm run memory:supabase:sync:audit >/dev/null 2>&1; then
-  echo "✅ supabase smoke script executed" | tee "$ART_DIR/supabase-smoke.txt"
-else
-  echo "⚠️ supabase smoke script failed" | tee "$ART_DIR/supabase-smoke.txt"
-fi
+echo "ℹ️ application smoke tests are handled by CI/package typechecks" | tee "$ART_DIR/app-smoke.txt"
 
 echo "✅ post-verify complete"

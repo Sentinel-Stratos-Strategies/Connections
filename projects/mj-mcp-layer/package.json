@@ -1,0 +1,9 @@
+{
+  "name": "mj-mcp-layer-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workspace utilities for MJ MCP Layer automation scripts.",
+  "dependencies": {
+    "yaml": "^2.8.4"
+  }
+}

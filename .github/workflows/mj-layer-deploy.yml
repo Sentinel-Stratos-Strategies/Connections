@@ -29,8 +29,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install yaml parser
-        run: npm install -g yaml
+      - name: Install automation dependencies
+        run: npm ci --prefix projects/mj-mcp-layer --ignore-scripts --no-audit --no-fund
 
       - name: Resolve zone id
         id: zone
@@ -55,9 +55,9 @@ jobs:
         run: |
           cd projects/mj-mcp-layer
           cat > .env <<EOT
-          CF_ZONE_ID=${{ steps.zone.outputs.zone_id }}
-          CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}
-          EOT
+CF_ZONE_ID=${{ steps.zone.outputs.zone_id }}
+CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}
+EOT
 
       - name: Preflight
         if: steps.zone.outputs.skip != 'true'
