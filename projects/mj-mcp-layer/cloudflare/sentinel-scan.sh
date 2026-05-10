@@ -76,6 +76,10 @@ jq -n \
 
 echo "✅ scan written: $SCAN"
 
+BASELINE_WAF_DESCRIPTIONS=$(
+  node -e "const fs=require('fs');const YAML=require('yaml');const p=YAML.parse(fs.readFileSync(process.argv[1],'utf8'));console.log(JSON.stringify((p.waf_rules ?? []).map((rule) => rule.description).filter(Boolean)));" "$BASELINE"
+)
+
 # Hard-fail on Cloudflare API auth/rate-limit errors so we never report false-clean drift.
 API_ERRORS=$(jq -r '
   [
@@ -148,7 +152,7 @@ DRIFT_FOUND=0
   # 2. WAF rules vs baseline
   echo "## WAF custom rules"
   WAF_RULES=$(echo "$WAF" | jq -r '.result.rules // [] | length')
-  BASE_RULES=$(yq '.waf_rules | length' "$BASELINE" 2>/dev/null || echo 0)
+  BASE_RULES=$(echo "$BASELINE_WAF_DESCRIPTIONS" | jq 'length')
   echo "- in zone: $WAF_RULES"
   echo "- in baseline: $BASE_RULES"
   if [[ "$WAF_RULES" -ne "$BASE_RULES" ]]; then
@@ -156,24 +160,24 @@ DRIFT_FOUND=0
     DRIFT_FOUND=1
   fi
   # check each baseline rule exists by description
-  if command -v yq >/dev/null 2>&1; then
-    for i in $(seq 0 $((BASE_RULES - 1))); do
-      DESC=$(yq ".waf_rules[$i].description" "$BASELINE")
-      MATCH=$(echo "$WAF" | jq --arg d "$DESC" '[.result.rules[]? | select(.description == $d)] | length')
-      if [[ "$MATCH" == "0" ]]; then
-        echo "  - 🚨 MISSING from zone: $DESC"
-        DRIFT_FOUND=1
-      fi
-    done
-    # check for rules in zone not in baseline
-    echo "$WAF" | jq -r '.result.rules[]?.description' | while read -r d; do
-      [[ -z "$d" ]] && continue
-      FOUND=$(yq ".waf_rules[] | select(.description == \"$d\") | .description" "$BASELINE" 2>/dev/null || echo "")
-      if [[ -z "$FOUND" ]]; then
-        echo "  - 🚨 IN ZONE BUT NOT IN BASELINE: $d"
-      fi
-    done
-  fi
+  while IFS= read -r DESC; do
+    [[ -z "$DESC" ]] && continue
+    MATCH=$(echo "$WAF" | jq --arg d "$DESC" '[.result.rules[]? | select(.description == $d)] | length')
+    if [[ "$MATCH" == "0" ]]; then
+      echo "  - 🚨 MISSING from zone: $DESC"
+      DRIFT_FOUND=1
+    fi
+  done < <(echo "$BASELINE_WAF_DESCRIPTIONS" | jq -r '.[]')
+
+  # check for rules in zone not in baseline
+  while IFS= read -r d; do
+    [[ -z "$d" ]] && continue
+    FOUND=$(echo "$BASELINE_WAF_DESCRIPTIONS" | jq --arg d "$d" 'index($d) != null')
+    if [[ "$FOUND" != "true" ]]; then
+      echo "  - 🚨 IN ZONE BUT NOT IN BASELINE: $d"
+      DRIFT_FOUND=1
+    fi
+  done < <(echo "$WAF" | jq -r '.result.rules[]?.description')
   echo
 
   # 3. Recent audit log changes not by Codex

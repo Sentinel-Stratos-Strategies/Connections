@@ -29,8 +29,8 @@ Enterprise-grade MCP Edge Routing & Multi-Tenant Policy Enforcement platform.
 
 The edge Worker implementing:
 - **`/mcp`** — MCP protocol endpoint (tools/list, tools/call)
-- **`/turn`** — Turn execution for multi-step workflows
-- **`/audit`** — Immutable audit event stream
+- **`/turn/*`** — Turn execution for multi-step workflows
+- **`/audit/*`** — Immutable audit event stream
 - **`/healthz`** — Health check
 - **`/api/change-request`** — Change request intake and approval
 - **`/api/ledger`** — Immutable ledger query
@@ -116,6 +116,7 @@ curl https://your-worker.workers.dev/healthz
 curl -H "x-tenant-id: kevis" \
      -H "x-request-id: $(uuidgen)" \
      -H "x-policy-version: v2" \
+     -H "x-operator-capability: mcp.admin" \
      -H "x-ellis-aegis-token: YOUR_TOKEN" \
      https://your-worker.workers.dev/mcp
 
@@ -123,8 +124,9 @@ curl -H "x-tenant-id: kevis" \
 curl -H "x-tenant-id: kevis" \
      -H "x-request-id: $(uuidgen)" \
      -H "x-policy-version: v2" \
+     -H "x-operator-capability: forensic.read" \
      -H "x-ellis-aegis-token: YOUR_TOKEN" \
-     "https://your-worker.workers.dev/audit?since=2026-05-01&limit=50"
+     "https://your-worker.workers.dev/audit/events?since=2026-05-01&limit=50"
 ```
 
 ## CI/CD

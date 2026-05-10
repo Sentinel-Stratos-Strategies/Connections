@@ -27,6 +27,14 @@ jobs:
         with:
           ref: MJ_Layer
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install automation dependencies
+        run: npm ci --prefix projects/mj-mcp-layer --ignore-scripts --no-audit --no-fund
+
       - name: Resolve zone id
         id: zone
         shell: bash

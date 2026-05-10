@@ -122,8 +122,11 @@ async function main(): Promise<void> {
     return;
   }
 
-  const adapters = buildAdapters(values.provider, values["all-providers"]);
-  if (adapters.size === 0) {
+  const adapterRequiredCommands = new Set<Command>(["health-check", "drift-scan", "compliance-check", "policy-apply", "change-request", "auto-remediate"]);
+  const commandRequiresAdapters = adapterRequiredCommands.has(command)
+    && !(command === "policy-apply" && values["dry-run"]);
+  const adapters = buildAdapters(values.provider, values["all-providers"], !commandRequiresAdapters);
+  if (adapters.size === 0 && commandRequiresAdapters) {
     console.error("No provider adapters are configured. Set provider credentials or choose an enabled provider.");
     process.exit(1);
   }
@@ -131,8 +134,10 @@ async function main(): Promise<void> {
   if (!existsSync(artifactDir)) mkdirSync(artifactDir, { recursive: true });
 
   const signedLedgerCommands = new Set<Command>(["drift-scan", "policy-apply", "ledger-view", "ledger-verify"]);
+  const commandRequiresLedgerKey = signedLedgerCommands.has(command)
+    && !(command === "policy-apply" && values["dry-run"]);
   const ledgerKey = process.env.MCP_LEDGER_KEY;
-  if (!ledgerKey && signedLedgerCommands.has(command)) {
+  if (!ledgerKey && commandRequiresLedgerKey) {
     console.error("MCP_LEDGER_KEY is required for signed ledger operations.");
     process.exit(1);
   }
@@ -226,6 +231,7 @@ automation:
 function buildAdapters(
   providerName?: string,
   allProviders?: boolean,
+  quiet = false,
 ): Map<ProviderName, ProviderAdapter> {
   const adapters = new Map<ProviderName, ProviderAdapter>();
 
@@ -245,7 +251,7 @@ function buildAdapters(
         accountId: process.env.CF_ACCOUNT_ID,
       }));
     } else {
-      console.warn("[config] Cloudflare: missing CF_API_TOKEN or CF_ZONE_ID");
+      if (!quiet) console.warn("[config] Cloudflare: missing CF_API_TOKEN or CF_ZONE_ID");
     }
   }
 

@@ -2,6 +2,8 @@
 # 20-health-check.sh — verify all MCP hosts return 200 on a policy-declared health path
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
 ART_DIR="${ART_DIR:-./artifacts}"
 mkdir -p "$ART_DIR"
 OUT="$ART_DIR/health-$(date -u +%Y%m%dT%H%M%SZ).json"
@@ -10,16 +12,22 @@ HEALTH_TENANT_ID="${HEALTH_TENANT_ID:-health-check}"
 HEALTH_POLICY_VERSION="${HEALTH_POLICY_VERSION:-mj-edge-unified-v2}"
 HEALTH_CAPABILITY="${HEALTH_CAPABILITY:-mcp.admin}"
 
-HOSTS=(
-  codex.your-domain.example
-  cursor.your-domain.example
-  gemini.your-domain.example
-  antigravity.your-domain.example
-  antigrativy.your-domain.example
-)
+if [[ -n "${HEALTH_HOSTS:-}" ]]; then
+  IFS=', ' read -r -a HOSTS <<< "$HEALTH_HOSTS"
+else
+  mapfile -t HOSTS < <(
+    node -e "const fs=require('fs');const YAML=require('yaml');const p=YAML.parse(fs.readFileSync(process.argv[1],'utf8'));for (const item of p.hosts ?? []) if (item.host) console.log(item.host);" "$BASELINE"
+  )
+fi
+
+if [[ "${#HOSTS[@]}" -eq 0 ]]; then
+  echo "❌ no health hosts configured; set HEALTH_HOSTS or define hosts in $BASELINE"
+  exit 2
+fi
 
 results="[]"
 for h in "${HOSTS[@]}"; do
+  [[ -z "$h" ]] && continue
   request_headers=()
   if [[ "$HEALTH_PATH" == "/mcp" ]]; then
     request_headers=(
