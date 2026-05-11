@@ -18,13 +18,18 @@ import { HealthCheckAggregator } from "../automation/health-aggregator.js";
 import { ChangeRequestWorkflow } from "../automation/change-request-workflow.js";
 import { AutoRemediation } from "../automation/auto-remediation.js";
 import { PolicyTranslator } from "../automation/policy-translator.js";
-import { PolicyCompiler } from "../core/policy-compiler.js";
+import { PolicyCompiler, type IntentRequest } from "../core/policy-compiler.js";
 import { EvidenceEngine } from "../core/evidence-engine.js";
 import { MutationTester } from "../core/mutation-tester.js";
 import { RollbackEngine } from "../core/rollback-engine.js";
 import { RuntimeVerifier } from "../core/runtime-verifier.js";
 import { DigitalTwin } from "../core/digital-twin.js";
 import { DriftClassifier } from "../automation/drift-classifier.js";
+import { ComplianceAutopilot } from "../automation/compliance-autopilot.js";
+import { MutationBudgetEngine } from "../core/mutation-budget.js";
+import { VisaEngine } from "../core/capability-visa.js";
+import { ReputationEngine } from "../core/reputation-engine.js";
+import { AgentCourt } from "../core/agent-court.js";
 
 const COMMANDS = [
   "init",
@@ -32,6 +37,7 @@ const COMMANDS = [
   "drift-scan",
   "drift-classify",
   "compliance-check",
+  "compliance-report",
   "policy-apply",
   "policy-validate",
   "policy-translate",
@@ -40,6 +46,10 @@ const COMMANDS = [
   "plan",
   "verify",
   "simulate",
+  "budget",
+  "visa",
+  "reputation",
+  "court",
   "change-request",
   "auto-remediate",
   "ledger-view",
@@ -69,6 +79,11 @@ COMMANDS:
   plan                Generate and test a rollback recipe
   verify              Run runtime verification against live audit events
   simulate            Run digital twin simulation for a policy change
+  budget              Show mutation budget for an actor
+  visa                Mint or list capability visas
+  reputation          Show agent reputation scores
+  court               Run full agent court review on an intent
+  compliance-report   Generate compliance report (soc2, pci, hipaa, iso27001)
   change-request      Submit a change request for approval
   auto-remediate      Detect drift and remediate with approval
   ledger-view         View recent ledger entries
@@ -105,6 +120,11 @@ EXAMPLES:
   mcp-cli verify --file policy.yaml --endpoint https://worker.dev --since "1 hour ago"
   mcp-cli simulate --file policy.yaml --provider cloudflare
   mcp-cli drift-classify --provider cloudflare
+  mcp-cli budget --name codex
+  mcp-cli visa --name cursor --intent "add_dns_record" --tenant kevis.online
+  mcp-cli reputation
+  mcp-cli court --intent "protect /mcp from unauthenticated bursts" --tenant kevis
+  mcp-cli compliance-report --format json --from 2026-01-01 --to 2026-06-01
   mcp-cli auto-remediate --provider cloudflare
   mcp-cli ledger-view --since "2026-05-01"
 `;
@@ -217,6 +237,21 @@ async function main(): Promise<void> {
       break;
     case "simulate":
       await handleSimulate(adapters, values.file, values.format ?? "text");
+      break;
+    case "budget":
+      handleBudget(values.name, values.format ?? "text");
+      break;
+    case "visa":
+      handleVisaCommand(values.name, values.intent, values.tenant, values.format ?? "text");
+      break;
+    case "reputation":
+      handleReputationCommand(values.name, values.format ?? "text");
+      break;
+    case "court":
+      await handleCourt(adapters, ledger, values.intent, values.tenant, values.risk, values.format ?? "text");
+      break;
+    case "compliance-report":
+      handleComplianceReport(values.from, values.to, values.format ?? "text");
       break;
     case "change-request":
       await handleChangeRequestSubmit(orchestrator, ledger, adapters, values.file, values.name);
@@ -588,6 +623,164 @@ async function handlePlan(
   if (!testResult.simulation_passed) {
     console.error("\nRollback test FAILED — this plan should not be deployed without fixing the recipe.");
     process.exit(1);
+  }
+}
+
+function handleBudget(actorName?: string, format?: string): void {
+  const budgetEngine = new MutationBudgetEngine(
+    resolve("manifests/budgets"),
+    resolve("artifacts/budget-state.json"),
+  );
+
+  if (actorName) {
+    const summary = budgetEngine.getBudgetSummary(actorName);
+    if (format === "json") {
+      console.log(JSON.stringify(summary, null, 2));
+    } else {
+      console.log(budgetEngine.formatSummary(summary));
+    }
+  } else {
+    const all = budgetEngine.getAllSummaries();
+    if (format === "json") {
+      console.log(JSON.stringify(all, null, 2));
+    } else {
+      for (const summary of all) {
+        console.log(budgetEngine.formatSummary(summary));
+        console.log("");
+      }
+      if (all.length === 0) console.log("No budgets configured. Add YAML files to manifests/budgets/");
+    }
+  }
+}
+
+function handleVisaCommand(
+  agent?: string,
+  scope?: string,
+  zone?: string,
+  format?: string,
+): void {
+  const signingKey = process.env.MCP_LEDGER_KEY ?? "visa-default-key";
+  const visaEngine = new VisaEngine(resolve("artifacts/visa-store.json"), signingKey);
+
+  if (agent && scope) {
+    const visa = visaEngine.mint({
+      agent,
+      scope,
+      zone: zone ?? "default",
+      reason: `CLI mint: ${scope} for ${agent}`,
+    });
+
+    if (format === "json") {
+      console.log(JSON.stringify(visa, null, 2));
+    } else {
+      console.log(visaEngine.formatVisa(visa));
+    }
+  } else {
+    if (format === "json") {
+      console.log(JSON.stringify(visaEngine.listAll(), null, 2));
+    } else {
+      console.log(visaEngine.formatActiveList());
+    }
+  }
+}
+
+function handleReputationCommand(actorName?: string, format?: string): void {
+  const repEngine = new ReputationEngine(resolve("artifacts/reputation-store.json"));
+
+  if (actorName) {
+    const rep = repEngine.getReputation(actorName);
+    if (format === "json") {
+      console.log(JSON.stringify(rep, null, 2));
+    } else {
+      console.log(repEngine.formatReputation(rep));
+    }
+  } else {
+    if (format === "json") {
+      console.log(JSON.stringify(repEngine.getAllReputations(), null, 2));
+    } else {
+      console.log(repEngine.formatLeaderboard());
+    }
+  }
+}
+
+async function handleCourt(
+  adapters: Map<ProviderName, ProviderAdapter>,
+  ledger: UniversalLedger,
+  intentText?: string,
+  tenant?: string,
+  risk?: string,
+  format?: string,
+): Promise<void> {
+  if (!intentText) {
+    console.error("--intent is required for court. Example: --intent 'protect /mcp from unauthenticated bursts'");
+    process.exit(1);
+  }
+
+  const translator = new PolicyTranslator();
+  const compiler = new PolicyCompiler(translator);
+  const tester = new MutationTester();
+  const rollbackEngine = new RollbackEngine(adapters, ledger);
+  const evidenceEngine = new EvidenceEngine(
+    process.env.MCP_LEDGER_KEY ?? "court-key",
+    resolve("artifacts"),
+  );
+  const budgetEngine = new MutationBudgetEngine(
+    resolve("manifests/budgets"),
+    resolve("artifacts/budget-state.json"),
+  );
+  const repEngine = new ReputationEngine(resolve("artifacts/reputation-store.json"));
+
+  const court = new AgentCourt({
+    compiler,
+    mutationTester: tester,
+    rollbackEngine,
+    evidenceEngine,
+    budgetEngine,
+    reputationEngine: repEngine,
+    adapters,
+  });
+
+  const intent: IntentRequest = {
+    intent: intentText,
+    tenant: tenant ?? "default",
+    risk_tolerance: (risk as "low" | "medium" | "high") ?? "low",
+    rollback_required: true,
+    target_providers: Array.from(adapters.keys()) as ProviderName[],
+  };
+
+  const review = await court.review(intent);
+
+  if (format === "json") {
+    console.log(JSON.stringify(review, null, 2));
+  } else {
+    console.log(court.formatReview(review));
+  }
+
+  if (review.final_verdict === "denied") process.exit(1);
+  if (review.final_verdict === "escalated") process.exit(2);
+}
+
+function handleComplianceReport(
+  periodStart?: string,
+  periodEnd?: string,
+  format?: string,
+): void {
+  const start = periodStart ?? new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  const end = periodEnd ?? new Date().toISOString().slice(0, 10);
+
+  const autopilot = new ComplianceAutopilot(resolve("manifests/compliance"));
+  const report = autopilot.generateReport("soc2", [], start, end, {
+    driftScanCount: 0,
+    visaCount: 0,
+    budgetCheckCount: 0,
+    agentCount: 0,
+    antibodyCount: 0,
+  });
+
+  if (format === "json") {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    console.log(autopilot.formatReport(report));
   }
 }
 
