@@ -1,0 +1,36 @@
+{
+  "lane": "mj-codex",
+  "platform": "codex",
+  "purpose": "Coordinate approved Codex GUI, Codex CLI, local bridge, and code-authoring workflows without bypassing official APIs or platform policy.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "local_kit.validate",
+    "bridge.command.prepare",
+    "code.plan",
+    "code.patch_propose",
+    "mcp.connector.list",
+    "mcp.connector.call_approved"
+  ],
+  "deniedActions": [
+    "hidden_endpoint.call",
+    "unauthorized_ui_automation",
+    "login_history.recover_deleted",
+    "secret.read",
+    "policy_control.bypass"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "code.patch_apply",
+    "mcp.connector.add_external",
+    "bridge.push_production"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_local_and_connector_scope_only",
+    "externalWrite": "explicit_user_triggered_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}
