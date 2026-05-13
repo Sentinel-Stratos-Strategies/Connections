@@ -53,11 +53,8 @@
         "queue": "ellis-aegis-watchers",
       },
     ],
-    "consumers": [
-      {
-        "queue": "ellis-aegis-watchers",
-      },
-    ],
+    // The shared watcher queue is currently consumed by the Cloudflare platform
+    // Worker `ellis-aegis-control-plane`; this lane only produces jobs.
   },
 
   "routes": [
