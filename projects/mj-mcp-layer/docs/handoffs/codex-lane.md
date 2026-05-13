@@ -116,8 +116,8 @@ In Codex GUI → Settings → MCP Connectors, add a new connector:
 curl https://codex.ellis-aegis.us/healthz
 
 # Capability manifest (copy headers from above)
-curl -H "Authorization: Bearer YOUR_OPERATOR_TOKEN" \
-     -H "x-ellis-aegis-token: YOUR_OPERATOR_TOKEN" \
+export MJ_OPERATOR_TOKEN="set-in-shell"
+curl -H "x-ellis-aegis-token: ${MJ_OPERATOR_TOKEN:?set MJ_OPERATOR_TOKEN}" \
      -H "x-tenant-id: kevis" \
      -H "x-request-id: $(uuidgen)" \
      -H "x-policy-version: mj-edge-unified-v2" \

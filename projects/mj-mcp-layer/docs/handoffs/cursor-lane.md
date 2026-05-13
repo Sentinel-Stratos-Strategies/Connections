@@ -91,8 +91,8 @@ From terminal:
 ```/dev/null/verify.sh#L1-8
 curl https://mcp.ellis-aegis.us/healthz
 
-curl -H "Authorization: Bearer YOUR_OPERATOR_TOKEN" \
-     -H "x-ellis-aegis-token: YOUR_OPERATOR_TOKEN" \
+export MJ_OPERATOR_TOKEN="set-in-shell"
+curl -H "x-ellis-aegis-token: ${MJ_OPERATOR_TOKEN:?set MJ_OPERATOR_TOKEN}" \
      -H "x-tenant-id: kevis" \
      -H "x-request-id: cursor-test-001" \
      -H "x-policy-version: mj-edge-unified-v2" \

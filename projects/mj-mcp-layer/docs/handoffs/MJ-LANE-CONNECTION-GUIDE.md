@@ -106,9 +106,10 @@ The `/mcp` `POST` endpoint follows the MCP specification.
 # Health check (no auth required)
 curl https://mcp.ellis-aegis.us/healthz
 
+export MJ_OPERATOR_TOKEN="set-in-shell"
+
 # MCP capability manifest
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-     -H "x-ellis-aegis-token: YOUR_TOKEN" \
+curl -H "x-ellis-aegis-token: ${MJ_OPERATOR_TOKEN:?set MJ_OPERATOR_TOKEN}" \
      -H "x-tenant-id: kevis" \
      -H "x-request-id: $(uuidgen)" \
      -H "x-policy-version: mj-edge-unified-v2" \
@@ -117,8 +118,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 # MCP tool call
 curl -X POST \
-     -H "Authorization: Bearer YOUR_TOKEN" \
-     -H "x-ellis-aegis-token: YOUR_TOKEN" \
+     -H "x-ellis-aegis-token: ${MJ_OPERATOR_TOKEN:?set MJ_OPERATOR_TOKEN}" \
      -H "x-tenant-id: kevis" \
      -H "x-request-id: $(uuidgen)" \
      -H "x-policy-version: mj-edge-unified-v2" \
@@ -128,8 +128,7 @@ curl -X POST \
      https://mcp.ellis-aegis.us/mcp
 
 # Audit events (last 50)
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-     -H "x-ellis-aegis-token: YOUR_TOKEN" \
+curl -H "x-ellis-aegis-token: ${MJ_OPERATOR_TOKEN:?set MJ_OPERATOR_TOKEN}" \
      -H "x-tenant-id: kevis" \
      -H "x-request-id: $(uuidgen)" \
      -H "x-policy-version: mj-edge-unified-v2" \

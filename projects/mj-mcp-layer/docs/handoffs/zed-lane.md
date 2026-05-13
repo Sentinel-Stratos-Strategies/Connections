@@ -100,8 +100,8 @@ After configuring Zed, verify the connection:
 curl https://mcp.ellis-aegis.us/healthz
 
 # Confirm MCP responds with your token
-curl -H "Authorization: Bearer YOUR_OPERATOR_TOKEN" \
-     -H "x-ellis-aegis-token: YOUR_OPERATOR_TOKEN" \
+export MJ_OPERATOR_TOKEN="set-in-shell"
+curl -H "x-ellis-aegis-token: ${MJ_OPERATOR_TOKEN:?set MJ_OPERATOR_TOKEN}" \
      -H "x-tenant-id: kevis" \
      -H "x-request-id: test-001" \
      -H "x-policy-version: mj-edge-unified-v2" \
