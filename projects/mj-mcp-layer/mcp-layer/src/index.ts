@@ -19,6 +19,8 @@ interface Env {
   FLAGS?: KVNamespace;
   EVIDENCE_BUCKET?: R2Bucket;
   WATCHER_QUEUE?: Queue<WatcherJob>;
+  /** Static dashboard + assets (Wrangler `assets.binding`) */
+  ASSETS?: Fetcher;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -127,6 +129,10 @@ export default {
         headers: { "content-type": "text/plain; charset=utf-8" },
         request,
       });
+    }
+
+    if (request.method === "GET" && (path === "/dashboard" || path === "/dashboard/" || path.startsWith("/dashboard/"))) {
+      return serveDashboard(request, env);
     }
 
     const policyBasePath = resolvePolicyBasePath(path);
@@ -557,6 +563,39 @@ async function handleProtectedList(
   }, { env, request });
 }
 
+async function serveDashboard(request: Request, env: Env): Promise<Response> {
+  if (!env.ASSETS) {
+    return text("Dashboard static assets not configured (missing ASSETS binding)", {
+      env,
+      request,
+      status: 503,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  const url = new URL(request.url);
+  let pathname = url.pathname;
+  if (pathname === "/dashboard" || pathname === "/dashboard/") {
+    pathname = "/dashboard/index.html";
+  }
+
+  const assetUrl = new URL(pathname + url.search, url.origin);
+  const assetRequest = new Request(assetUrl.toString(), {
+    method: "GET",
+    headers: request.headers,
+  });
+
+  const assetResponse = await env.ASSETS.fetch(assetRequest);
+  const headers = new Headers(assetResponse.headers);
+  if (!headers.has("cache-control")) {
+    headers.set("cache-control", "public, max-age=120");
+  }
+  return new Response(assetResponse.body, {
+    status: assetResponse.status,
+    headers,
+  });
+}
+
 // ---------- Policy Enforcement ----------
 
 function enforceMcpPolicy(request: Request, method: string, basePath: string): JsonRecord | null {
@@ -831,6 +870,7 @@ function renderHomePage(): string {
       <div class="ep"><h3>Turn Execution</h3><p><code>POST /turn/:id</code> &mdash; Submit or continue a turn</p></div>
       <div class="ep"><h3>Audit Trail</h3><p><code>GET /audit/events</code> &mdash; Query audit events</p><p><code>GET /api/ledger</code> &mdash; Immutable ledger</p></div>
       <div class="ep"><h3>Health &amp; Ops</h3><p><code>GET /healthz</code> &mdash; Health check</p><p><code>POST /api/checks/run</code> &mdash; Run checks</p></div>
+      <div class="ep"><h3>MJ Edge cockpit</h3><p><a href="/dashboard"><code>GET /dashboard</code></a> &mdash; Genesis OS static UI (ASSETS binding)</p></div>
       <div class="ep"><h3>Change Requests</h3><p><code>POST /api/change-request</code> &mdash; Submit</p><p><code>GET /api/change-request</code> &mdash; List</p></div>
       <div class="ep"><h3>Resources</h3><p><code>GET /api/assets</code> <code>GET /api/events</code></p><p><code>GET /api/incidents</code></p></div>
     </section>
