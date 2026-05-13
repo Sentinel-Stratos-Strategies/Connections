@@ -40,7 +40,7 @@ interface PolicyConfig {
 
 const WATCHER_KINDS: WatcherKind[] = ["edge-abuse", "drift", "origin-health", "digest"];
 
-const POLICY: PolicyConfig = {
+export const POLICY: PolicyConfig = {
   deny_by_default: true,
   allowed_paths: [
     "/mcp",
@@ -52,7 +52,6 @@ const POLICY: PolicyConfig = {
     "/api/checks/run",
     "/api/change-request",
     "/api/ledger",
-    "/healthz",
   ],
   required_headers: ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
   method_matrix: {
@@ -65,7 +64,6 @@ const POLICY: PolicyConfig = {
     "/api/checks/run": ["POST", "OPTIONS"],
     "/api/change-request": ["GET", "POST", "OPTIONS"],
     "/api/ledger": ["GET", "OPTIONS"],
-    "/healthz": ["GET"],
   },
   capability_matrix: {
     "/mcp": {
@@ -131,21 +129,17 @@ export default {
       });
     }
 
+    const policyBasePath = resolvePolicyBasePath(path);
+    if (policyBasePath) {
+      const policyCheck = enforceMcpPolicy(request, request.method, policyBasePath);
+      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
+    }
+
     // ---------- MCP Protocol Endpoints ----------
 
     if (path === "/healthz" && request.method === "GET") {
       return json({
         status: "ok",
-        app: env.APP_NAME ?? "mj-mcp-layer",
-        environment: env.APP_ENV ?? "production",
-        now: new Date().toISOString(),
-        zone: env.ZONE_NAME ?? "unset",
-        storage: {
-          d1: Boolean(env.DB),
-          queue: Boolean(env.WATCHER_QUEUE),
-          r2: Boolean(env.EVIDENCE_BUCKET),
-          kv: Boolean(env.FLAGS),
-        },
       }, { env, request });
     }
 
@@ -169,54 +163,31 @@ export default {
 
     if (request.method === "GET" && path === "/api/health") {
       return json({
-        app: env.APP_NAME ?? "mj-mcp-layer",
-        environment: env.APP_ENV ?? "production",
-        now: new Date().toISOString(),
         status: "ok",
-        storage: {
-          d1: Boolean(env.DB),
-          queue: Boolean(env.WATCHER_QUEUE),
-          r2: Boolean(env.EVIDENCE_BUCKET),
-        },
-        zone: env.ZONE_NAME ?? "unset",
       }, { env, request });
     }
 
     if (path === "/api/assets" && request.method === "GET") {
-      const policyCheck = enforceMcpPolicy(request, "GET", "/api/assets");
-      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleProtectedList(request, env, "assets");
     }
     if (path === "/api/events" && request.method === "GET") {
-      const policyCheck = enforceMcpPolicy(request, "GET", "/api/events");
-      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleProtectedList(request, env, "events");
     }
     if (path === "/api/incidents" && request.method === "GET") {
-      const policyCheck = enforceMcpPolicy(request, "GET", "/api/incidents");
-      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleProtectedList(request, env, "incidents");
     }
     if (path === "/api/checks/run" && request.method === "POST") {
-      const policyCheck = enforceMcpPolicy(request, "POST", "/api/checks/run");
-      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleProtectedCheckRun(request, env, ctx);
     }
 
     if (path === "/api/change-request" && request.method === "POST") {
-      const policyCheck = enforceMcpPolicy(request, "POST", "/api/change-request");
-      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleChangeRequest(request, env, ctx);
     }
     if (path === "/api/change-request" && request.method === "GET") {
-      const policyCheck = enforceMcpPolicy(request, "GET", "/api/change-request");
-      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleChangeRequestList(request, env);
     }
 
     if (path === "/api/ledger" && request.method === "GET") {
-      const policyCheck = enforceMcpPolicy(request, "GET", "/api/ledger");
-      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleLedgerList(request, env);
     }
 
@@ -267,9 +238,6 @@ export default {
 // ---------- MCP Handlers ----------
 
 async function handleMcpList(request: Request, env: Env): Promise<Response> {
-  const policyCheck = enforceMcpPolicy(request, "GET", "/mcp");
-  if (policyCheck) return json(policyCheck, { env, request, status: 403 });
-
   const auth = await authenticate(request, env);
   if (!auth.ok) return json({ error: auth.error }, { env, request, status: 401 });
 
@@ -297,9 +265,6 @@ async function handleMcpList(request: Request, env: Env): Promise<Response> {
 }
 
 async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-  const policyCheck = enforceMcpPolicy(request, "POST", "/mcp");
-  if (policyCheck) return json(policyCheck, { env, request, status: 403 });
-
   const auth = await authenticate(request, env);
   if (!auth.ok) return json({ error: auth.error }, { env, request, status: 401 });
 
@@ -359,9 +324,6 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
 }
 
 async function handleTurn(request: Request, env: Env, ctx: ExecutionContext, path: string): Promise<Response> {
-  const policyCheck = enforceMcpPolicy(request, "POST", "/turn/*");
-  if (policyCheck) return json(policyCheck, { env, request, status: 403 });
-
   const auth = await authenticate(request, env);
   if (!auth.ok) return json({ error: auth.error }, { env, request, status: 401 });
 
@@ -390,9 +352,6 @@ async function handleTurn(request: Request, env: Env, ctx: ExecutionContext, pat
 }
 
 async function handleAudit(request: Request, env: Env, ctx: ExecutionContext, path: string): Promise<Response> {
-  const policyCheck = enforceMcpPolicy(request, "GET", "/audit/*");
-  if (policyCheck) return json(policyCheck, { env, request, status: 403 });
-
   const auth = await authenticate(request, env);
   if (!auth.ok) return json({ error: auth.error }, { env, request, status: 401 });
 
@@ -603,6 +562,14 @@ async function handleProtectedList(
 function enforceMcpPolicy(request: Request, method: string, basePath: string): JsonRecord | null {
   if (!POLICY.deny_by_default) return null;
 
+  if (!POLICY.allowed_paths.includes(basePath)) {
+    return {
+      error: "policy_violation",
+      message: `Route ${basePath} is not listed in allowed_paths`,
+      policy: "deny_by_default",
+    };
+  }
+
   const missingHeaders = POLICY.required_headers.filter(
     (h) => !request.headers.get(h),
   );
@@ -637,6 +604,19 @@ function enforceMcpPolicy(request: Request, method: string, basePath: string): J
     }
   }
 
+  return null;
+}
+
+function resolvePolicyBasePath(path: string): string | null {
+  if (path === "/mcp") return "/mcp";
+  if (path.startsWith("/turn/")) return "/turn/*";
+  if (path.startsWith("/audit/")) return "/audit/*";
+  if (path === "/api/assets") return "/api/assets";
+  if (path === "/api/events") return "/api/events";
+  if (path === "/api/incidents") return "/api/incidents";
+  if (path === "/api/checks/run") return "/api/checks/run";
+  if (path === "/api/change-request") return "/api/change-request";
+  if (path === "/api/ledger") return "/api/ledger";
   return null;
 }
 

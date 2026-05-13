@@ -207,10 +207,14 @@ export class VisaEngine {
       agent: visa.agent,
       scope: visa.scope,
       zone: visa.zone,
-      ttl: visa.ttl_minutes,
+      ttl_minutes: visa.ttl_minutes,
       max_mutations: visa.max_mutations,
+      mutations_used: visa.mutations_used,
+      receipt_required: visa.receipt_required,
       issued_at: visa.issued_at,
       expires_at: visa.expires_at,
+      reason: visa.reason,
+      status: visa.status,
     });
 
     return createHmac("sha256", this.signingKey).update(payload).digest("hex");
