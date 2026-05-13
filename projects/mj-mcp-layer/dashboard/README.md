@@ -9,10 +9,14 @@
 
 This matches the MJ MCP 10/10 handoff allowlist path `projects/mj-mcp-layer/dashboard/**/*`.
 
+## Checkpoints
+
+Numbered roadmap (**CP-1 … CP-10**), statuses, and commit convention: **[CHECKPOINTS.md](./CHECKPOINTS.md)**.
+
 ## Scope
 
-- **Static prototype** only: Admin / Customer tabs, command palette UI, demo metrics (no live API).
-- **Not wired** to the Cloudflare Worker; buttons use client-side toasts only.
+- **Static prototype** for behavior: Admin / Customer tabs, command palette, demo metrics, client-side toasts.
+- **Served in prod** at `GET /dashboard` on the Worker (static bundle); interactive actions are still **not** backed by APIs except what you add in later checkpoints.
 - External deps: Google Fonts, `unpkg.com/lucide` (pin for production in a later task).
 
 ## Local preview

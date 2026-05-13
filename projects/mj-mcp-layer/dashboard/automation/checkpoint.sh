@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # MJ Edge checkpoint runner: sync dashboard → validate → optional auto-push.
+#
+# Numbered roadmap: ../../CHECKPOINTS.md (CP-1 … CP-10). Tag commits with CP-n when you finish a step, e.g.
+#   CHECKPOINT_AUTO_PUSH=1 CHECKPOINT=3 ./checkpoint.sh "feat(mj-edge): pin lucide (CP-3)"
+#
 # Usage:
 #   ./checkpoint.sh              # validate only
 #   CHECKPOINT_AUTO_PUSH=1 ./checkpoint.sh "commit message"   # commit + push
-# Ten-minute gate (CLI buddy): run under `watch` or:
+# Ten-minute gate (CLI buddy): run checkpoint-loop.sh or:
 #   sleep 600 && CHECKPOINT_AUTO_PUSH=1 ./checkpoint.sh "chore: advance checkpoint"
 set -euo pipefail
 
@@ -11,6 +15,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MJ_LAYER_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPO_ROOT="$(cd "$MJ_LAYER_ROOT/../.." && pwd)"
 cd "$MJ_LAYER_ROOT"
+
+if [[ -n "${CHECKPOINT:-}" ]]; then
+  echo "==> CP-${CHECKPOINT} — see dashboard/CHECKPOINTS.md"
+fi
 
 bash "$SCRIPT_DIR/sync-public.sh"
 

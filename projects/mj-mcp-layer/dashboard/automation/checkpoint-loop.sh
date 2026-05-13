@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Optional: run checkpoint.sh every 10 minutes with auto-push (use only on a trusted branch).
+# Optional: run checkpoint.sh every INTERVAL seconds with auto-push (trusted branch only).
+# Roadmap: ../CHECKPOINTS.md — set CHECKPOINT=n in the message you pass, or export CHECKPOINT before starting.
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 while true; do
