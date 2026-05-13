@@ -16,7 +16,7 @@
 - Local checkout: `/Volumes/Stratos_Tools/projects/Connections-cursor-review`
 - Branch: `cursor/mj-layer-enterprise-ready-1c9b`
 - PR: `https://github.com/Sentinel-Stratos-Strategies/Connections/pull/5`
-- Head SHA at handoff: `76a5e17030589d02510eb68fffaf4655cf5036ef`
+- Head SHA before this handoff doc was added: `76a5e17030589d02510eb68fffaf4655cf5036ef`
 - Base branch: `MJ_Layer`
 - GitHub merge state at handoff: `DIRTY`
 - Known merge conflict from `git merge-tree`: `projects/mj-mcp/README.md` only.
@@ -40,7 +40,7 @@ npm --prefix projects/mj-mcp-layer/mcp-layer test
 npm --prefix projects/mj-mcp-layer/platform run typecheck
 npm --prefix projects/mj-mcp-layer/platform test
 npm --prefix projects/mj-mcp-layer/platform run build
-npx wrangler deploy --dry-run --cwd projects/mj-mcp-layer/mcp-layer
+(cd projects/mj-mcp-layer/mcp-layer && npx wrangler deploy --dry-run)
 bash -n projects/mj-mcp-layer/cloudflare/*.sh
 node - <<'NODE'
 const fs = require("node:fs");
