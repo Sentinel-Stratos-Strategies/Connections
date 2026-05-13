@@ -8,6 +8,7 @@ import { parse as parseYAML } from "yaml";
 import type { ProviderName, SecurityPolicy } from "../core/types.js";
 import type { ProviderAdapter } from "../adapters/provider.interface.js";
 import { CloudflareAdapter } from "../adapters/cloudflare.adapter.js";
+import { GoogleAdapter } from "../adapters/google.adapter.js";
 import { AWSAdapter } from "../adapters/aws.adapter.js";
 import { KubernetesAdapter } from "../adapters/kubernetes.adapter.js";
 import { TerraformAdapter } from "../adapters/terraform.adapter.js";
@@ -345,6 +346,23 @@ function buildAdapters(
       }));
     } else {
       if (!quiet) console.warn("[config] Cloudflare: missing CF_API_TOKEN or CF_ZONE_ID");
+    }
+  }
+
+  if (shouldInclude("google")) {
+    const personalCreds = process.env.GOOGLE_PERSONAL_CREDENTIALS;
+    const adminCreds = process.env.GOOGLE_ADMIN_CREDENTIALS;
+    if (personalCreds || adminCreds) {
+      const config: any = {};
+      try {
+        if (personalCreds) config.personalCredentials = JSON.parse(personalCreds);
+        if (adminCreds) config.adminCredentials = JSON.parse(adminCreds);
+        adapters.set("google", new GoogleAdapter(config));
+      } catch (err) {
+        if (!quiet) console.error("[config] Google: failed to parse credentials JSON");
+      }
+    } else {
+      if (!quiet) console.warn("[config] Google: missing GOOGLE_PERSONAL_CREDENTIALS or GOOGLE_ADMIN_CREDENTIALS");
     }
   }
 

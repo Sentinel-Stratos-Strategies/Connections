@@ -1,7 +1,7 @@
 export type ISO8601 = string;
 export type SHA256 = string;
 export type UUID = string;
-export type ProviderName = "cloudflare" | "aws" | "kubernetes" | "terraform";
+export type ProviderName = "cloudflare" | "google" | "aws" | "kubernetes" | "terraform";
 
 export interface LedgerEntry {
   ts: ISO8601;

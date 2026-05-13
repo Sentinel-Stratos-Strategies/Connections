@@ -82,6 +82,22 @@ export function capabilitiesForProvider(name: ProviderName): ProviderCapabilitie
     };
   }
 
+  if (name === "google") {
+    return {
+      inventory: true,
+      plan: true,
+      apply: true,
+      revert: true,
+      auditLog: true,
+      rateLimit: false,
+      waf: false,
+      dns: false,
+      workerRoutes: false,
+      dryRun: true,
+      liveMutation: true,
+    };
+  }
+
   return preview;
 }
 

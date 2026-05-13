@@ -12,6 +12,8 @@ Set these in the repository settings (`Settings > Secrets and variables > Action
 | `CF_ZONE_ID_HITCH` | Zone ID for hitch.guru | Deploy + Scan |
 | `CF_ZONE_ID_KEVIS` | Zone ID for kevis.online | Deploy + Scan |
 | `OPERATOR_TOKEN` | Runtime operator token used by the Worker and smoke tests | Manual deploy smoke |
+| `GOOGLE_PERSONAL_CREDENTIALS` | JSON credentials for personal Google account | Google Lane |
+| `GOOGLE_ADMIN_CREDENTIALS` | JSON credentials for admin Google workspace | Google Lane |
 | `MCP_LEDGER_KEY` | Production signing key for ledger, visa, court, and evidence signatures | Platform proof + signed operations |
 
 ## Optional Secrets
@@ -58,6 +60,8 @@ gh secret set CF_ZONE_ID_ELLIS --body "zone-id-here"
 gh secret set CF_ZONE_ID_HITCH --body "zone-id-here"
 gh secret set CF_ZONE_ID_KEVIS --body "zone-id-here"
 gh secret set OPERATOR_TOKEN --body "long-random-operator-token"
+gh secret set GOOGLE_PERSONAL_CREDENTIALS --body '{"client_email": "...", "private_key": "...", "project_id": "..."}'
+gh secret set GOOGLE_ADMIN_CREDENTIALS --body '{"client_email": "...", "private_key": "...", "project_id": "..."}'
 gh secret set MCP_SMOKE_BASE_URL --body "https://mcp.ellis-aegis.us"
 gh secret set MCP_LEDGER_KEY --body "long-random-ledger-signing-key"
 ```

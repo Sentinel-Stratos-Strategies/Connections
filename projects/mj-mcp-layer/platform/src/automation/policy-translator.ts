@@ -31,6 +31,7 @@ export class PolicyTranslator {
 
     const translators: Record<ProviderName, (p: AbstractPolicy) => string> = {
       cloudflare: (p) => this.toCloudflare(p),
+      google: (p) => this.toGoogle(p),
       aws: (p) => this.toAWS(p),
       kubernetes: (p) => this.toKubernetes(p),
       terraform: (p) => this.toTerraform(p, policy),
@@ -109,6 +110,29 @@ export class PolicyTranslator {
         `    }`,
         `  }`,
         `}`,
+        "",
+      );
+    }
+
+    return lines.join("\n");
+  }
+
+  private toGoogle(policy: AbstractPolicy): string {
+    const lines = [
+      `# Google Cloud / Workspace configuration for: ${policy.name}`,
+      `# Generated: ${new Date().toISOString()}`,
+      "",
+      `# Google Workspace and GCP policies are governed by IAM and Resource Manager.`,
+      `# Policy Name: ${policy.name}`,
+      `# Default action: ${policy.denyByDefault ? "deny" : "allow"}`,
+      "",
+    ];
+
+    for (const rule of policy.rules) {
+      lines.push(
+        `# Rule: ${rule.name}`,
+        `#   Action: ${rule.action}`,
+        `#   Condition: ${rule.expression}`,
         "",
       );
     }

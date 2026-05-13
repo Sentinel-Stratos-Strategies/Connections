@@ -17,8 +17,18 @@
       "status": "ready_for_operator_token",
       "entrypoint": "https://codex.ellis-aegis.us/mcp",
       "requiredSecrets": ["OPERATOR_TOKEN"],
-      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
-      "allowedCapabilities": ["mcp.admin", "script.run", "cloud.ops", "forensic.read"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
+      "allowedCapabilities": [
+        "mcp.admin",
+        "script.run",
+        "cloud.ops",
+        "forensic.read"
+      ],
       "auditMode": "required"
     },
     {
@@ -26,7 +36,12 @@
       "status": "ready_for_app_or_oidc",
       "entrypoint": "https://mcp.ellis-aegis.us/mcp",
       "requiredSecrets": ["GITHUB_TOKEN or GitHub App credentials"],
-      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
       "allowedCapabilities": ["repo.read", "pr.comment", "workflow.dispatch"],
       "auditMode": "required"
     },
@@ -34,8 +49,19 @@
       "lane": "mj-cloudflare",
       "status": "ready_for_api_token",
       "entrypoint": "https://mcp.ellis-aegis.us/mcp",
-      "requiredSecrets": ["CF_API_TOKEN", "CF_ACCOUNT_ID", "CF_ZONE_ID_ELLIS", "CF_ZONE_ID_HITCH", "CF_ZONE_ID_KEVIS"],
-      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "requiredSecrets": [
+        "CF_API_TOKEN",
+        "CF_ACCOUNT_ID",
+        "CF_ZONE_ID_ELLIS",
+        "CF_ZONE_ID_HITCH",
+        "CF_ZONE_ID_KEVIS"
+      ],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
       "allowedCapabilities": ["cloud.ops", "security.status", "forensic.read"],
       "auditMode": "required"
     },
@@ -44,7 +70,12 @@
       "status": "ready_for_connector_scope",
       "entrypoint": "https://mcp.ellis-aegis.us/mcp",
       "requiredSecrets": ["OPENAI_API_KEY or approved OpenAI connector"],
-      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
       "allowedCapabilities": ["model.route", "tool.call_approved"],
       "auditMode": "required"
     },
@@ -52,9 +83,19 @@
       "lane": "mj-google",
       "status": "ready_for_oauth_or_service_account",
       "entrypoint": "https://mcp.ellis-aegis.us/mcp",
-      "requiredSecrets": ["GOOGLE_SERVICE_ACCOUNT_JSON or approved OAuth connector"],
-      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
-      "allowedCapabilities": ["drive.read_approved", "workspace.action_approved"],
+      "requiredSecrets": [
+        "GOOGLE_SERVICE_ACCOUNT_JSON or approved OAuth connector"
+      ],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
+      "allowedCapabilities": [
+        "drive.read_approved",
+        "workspace.action_approved"
+      ],
       "auditMode": "required"
     },
     {
@@ -62,7 +103,12 @@
       "status": "ready_for_connector_scope",
       "entrypoint": "https://mcp.ellis-aegis.us/mcp",
       "requiredSecrets": ["NOTION_TOKEN or approved Notion connector"],
-      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
       "allowedCapabilities": ["doc.read", "doc.update_approved"],
       "auditMode": "required"
     },
@@ -71,9 +117,88 @@
       "status": "ready_for_connector_scope",
       "entrypoint": "https://mcp.ellis-aegis.us/mcp",
       "requiredSecrets": ["LINEAR_API_KEY or approved Linear connector"],
-      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
       "allowedCapabilities": ["issue.read", "issue.update_approved"],
       "auditMode": "required"
+    },
+    {
+      "lane": "mj-vercel",
+      "status": "ready_for_connector_scope",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["VERCEL_TOKEN or approved Vercel connector"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
+      "allowedCapabilities": ["cloud.ops", "forensic.read"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-railway",
+      "status": "ready_for_api_token",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["RAILWAY_TOKEN"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
+      "allowedCapabilities": ["cloud.ops", "forensic.read"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-gadget",
+      "status": "ready_for_api_token",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["GADGET_API_KEY"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
+      "allowedCapabilities": ["mcp.admin", "cloud.ops"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-zed",
+      "status": "ready_for_operator_token",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["OPERATOR_TOKEN"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
+      "allowedCapabilities": ["mcp.admin", "script.run", "forensic.read"],
+      "auditMode": "required",
+      "mcpTransport": "http",
+      "handoff": "docs/handoffs/zed-lane.md"
+    },
+    {
+      "lane": "mj-cursor",
+      "status": "ready_for_operator_token",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["OPERATOR_TOKEN"],
+      "requiredHeaders": [
+        "x-tenant-id",
+        "x-request-id",
+        "x-policy-version",
+        "x-operator-capability"
+      ],
+      "allowedCapabilities": ["mcp.admin", "script.run", "forensic.read"],
+      "auditMode": "required",
+      "mcpTransport": "http",
+      "handoff": "docs/handoffs/cursor-lane.md"
     }
   ]
 }
