@@ -103,6 +103,22 @@ if (!token) {
   record(results, "audit_query_with_auth", audit.status === 200, {
     status: audit.status,
   });
+
+  const consoleLanes = await requestJson(baseUrl, "/api/console/lanes", {
+    headers: {
+      ...authHeaders,
+      "x-operator-capability": "forensic.read",
+    },
+  });
+  record(
+    results,
+    "console_lanes_with_auth",
+    consoleLanes.status === 200 && Array.isArray(consoleLanes.body?.lanes) && consoleLanes.body.lanes.length >= 30,
+    {
+      laneCount: Array.isArray(consoleLanes.body?.lanes) ? consoleLanes.body.lanes.length : 0,
+      status: consoleLanes.status,
+    },
+  );
 }
 
 const report = {

@@ -37,14 +37,20 @@
           "allowedCapabilities",
           "auditMode"
         ],
-        "additionalProperties": false,
-        "properties": {
-          "lane": { "type": "string", "pattern": "^mj-[a-z0-9-]+$" },
-          "status": { "type": "string" },
-          "entrypoint": { "type": "string" },
-          "requiredSecrets": {
-            "type": "array",
-            "items": { "type": "string" }
+          "additionalProperties": false,
+          "properties": {
+            "lane": { "type": "string", "pattern": "^mj-[a-z0-9-]+$" },
+            "status": { "type": "string" },
+            "entrypoint": { "type": "string" },
+            "consoleConnector": { "type": "string" },
+            "connectionMode": { "type": "string" },
+            "mcpTransport": { "type": "string" },
+            "handoff": { "type": "string" },
+            "activation": { "type": "string" },
+            "notes": { "type": "string" },
+            "requiredSecrets": {
+              "type": "array",
+              "items": { "type": "string" }
           },
           "requiredHeaders": {
             "type": "array",

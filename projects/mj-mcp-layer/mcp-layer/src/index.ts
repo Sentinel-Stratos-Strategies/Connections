@@ -1,3 +1,5 @@
+import { CONSOLE_LANE_AUTHORITY, CONSOLE_LANES } from "./console-lanes";
+
 interface WatcherJob {
   actor: string;
   createdAt: string;
@@ -51,6 +53,7 @@ export const POLICY: PolicyConfig = {
     "/api/incidents",
     "/api/checks/run",
     "/api/change-request",
+    "/api/console/lanes",
     "/api/ledger",
   ],
   required_headers: ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
@@ -63,6 +66,7 @@ export const POLICY: PolicyConfig = {
     "/api/incidents": ["GET", "OPTIONS"],
     "/api/checks/run": ["POST", "OPTIONS"],
     "/api/change-request": ["GET", "POST", "OPTIONS"],
+    "/api/console/lanes": ["GET", "OPTIONS"],
     "/api/ledger": ["GET", "OPTIONS"],
   },
   capability_matrix: {
@@ -91,6 +95,9 @@ export const POLICY: PolicyConfig = {
     "/api/change-request": {
       GET: ["forensic.read", "mcp.admin"],
       POST: ["cloud.ops", "mcp.admin"],
+    },
+    "/api/console/lanes": {
+      GET: ["forensic.read", "mcp.admin", "cloud.ops", "security.status"],
     },
     "/api/ledger": {
       GET: ["forensic.read", "mcp.admin"],
@@ -187,6 +194,10 @@ export default {
       return handleChangeRequestList(request, env);
     }
 
+    if (path === "/api/console/lanes" && request.method === "GET") {
+      return handleConsoleLanes(request, env, ctx);
+    }
+
     if (path === "/api/ledger" && request.method === "GET") {
       return handleLedgerList(request, env);
     }
@@ -252,6 +263,7 @@ async function handleMcpList(request: Request, env: Env): Promise<Response> {
       resources: ["resources/list", "resources/read"],
     },
     endpoints: {
+      consoleLanes: "/api/console/lanes",
       mcp: "/mcp",
       turn: "/turn/{turnId}",
       audit: "/audit/events",
@@ -296,6 +308,7 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
       result: {
         tools: [
           { name: "health_check", description: "Run infrastructure health check", inputSchema: { type: "object", properties: {} } },
+          { name: "console_lanes", description: "List active MJ console connector lanes and activation state", inputSchema: { type: "object", properties: {} } },
           { name: "drift_scan", description: "Detect unauthorized configuration drift", inputSchema: { type: "object", properties: { provider: { type: "string" } } } },
           { name: "compliance_check", description: "Validate compliance across providers", inputSchema: { type: "object", properties: {} } },
           { name: "ledger_query", description: "Query the immutable audit ledger", inputSchema: { type: "object", properties: { since: { type: "string" }, intent: { type: "string" } } } },
@@ -307,6 +320,28 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
   if (method === "tools/call") {
     const params = isJsonRecord(body.params) ? body.params : {};
     const toolName = typeof params.name === "string" ? params.name : "";
+    if (toolName === "console_lanes") {
+      return json({
+        jsonrpc: "2.0",
+        id: responseId,
+        result: {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              authority: CONSOLE_LANE_AUTHORITY,
+              count: CONSOLE_LANES.length,
+              lanes: CONSOLE_LANES.map((lane) => ({
+                activation: lane.activation,
+                consoleConnector: lane.consoleConnector,
+                entrypoint: lane.entrypoint,
+                lane: lane.lane,
+                status: lane.status,
+              })),
+            }, null, 2),
+          }],
+        },
+      }, { env, request });
+    }
     return json({
       jsonrpc: "2.0",
       id: responseId,
@@ -399,6 +434,44 @@ async function handleAudit(request: Request, env: Env, ctx: ExecutionContext, pa
     events: result.results ?? [],
     count: (result.results ?? []).length,
     query: { since, category, limit },
+  }, { env, request });
+}
+
+async function handleConsoleLanes(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (!auth.ok) return json({ error: auth.error }, { env, request, status: 401 });
+
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status");
+  const connector = url.searchParams.get("connector")?.toLowerCase();
+  const lanes = CONSOLE_LANES.filter((lane) => {
+    if (status && lane.status !== status) return false;
+    if (connector && !lane.consoleConnector.toLowerCase().includes(connector)) return false;
+    return true;
+  });
+
+  ctx.waitUntil(logEvent(env, {
+    actor: auth.actor,
+    category: "console.lanes.query",
+    message: `Console lane registry queried count=${lanes.length}`,
+    metadata: JSON.stringify(buildAuditMetadata(request, {
+      connector,
+      laneCount: lanes.length,
+      status,
+    })),
+    severity: "info",
+    source: "api",
+  }));
+
+  return json({
+    authority: CONSOLE_LANE_AUTHORITY,
+    count: lanes.length,
+    lanes,
+    policy: {
+      authHeader: env.OPERATOR_HEADER ?? "x-ellis-aegis-token",
+      denyByDefault: POLICY.deny_by_default,
+      requiredHeaders: POLICY.required_headers,
+    },
   }, { env, request });
 }
 
@@ -616,6 +689,7 @@ function resolvePolicyBasePath(path: string): string | null {
   if (path === "/api/incidents") return "/api/incidents";
   if (path === "/api/checks/run") return "/api/checks/run";
   if (path === "/api/change-request") return "/api/change-request";
+  if (path === "/api/console/lanes") return "/api/console/lanes";
   if (path === "/api/ledger") return "/api/ledger";
   return null;
 }

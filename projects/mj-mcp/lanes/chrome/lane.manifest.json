@@ -1,0 +1,35 @@
+{
+  "lane": "mj-chrome",
+  "platform": "chrome",
+  "purpose": "Coordinate profile-backed Chrome automation only when the Chrome plugin is installed and explicitly approved for authenticated browser work.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "tab.read",
+    "tab.navigate_approved",
+    "profile_session.use_approved",
+    "authenticated_ui.validate",
+    "screenshot.capture"
+  ],
+  "deniedActions": [
+    "cookie.export",
+    "password.read",
+    "secret.read",
+    "unapproved_purchase",
+    "policy_control.bypass"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "authenticated_state_change",
+    "external_form_submit",
+    "domain_settings_update"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_tabs_and_domains_only",
+    "externalWrite": "explicit_user_triggered_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

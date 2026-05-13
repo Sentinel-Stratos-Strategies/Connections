@@ -1,0 +1,35 @@
+{
+  "lane": "mj-gmail",
+  "platform": "gmail",
+  "purpose": "Support approved customer-support triage, handoff drafts, and operational email review without broad mailbox export.",
+  "owner": "Sentinel",
+  "authMode": "oauth",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "mail.search_approved",
+    "thread.summarize",
+    "reply.draft",
+    "support.action_extract",
+    "label.suggest"
+  ],
+  "deniedActions": [
+    "mailbox.export_all",
+    "send_without_approval",
+    "delete_permanent",
+    "secret.read",
+    "permission.escalate"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "reply.send",
+    "label.bulk_apply",
+    "thread.archive_bulk"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_mailbox_queries_only",
+    "externalWrite": "draft_first_send_requires_approval",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

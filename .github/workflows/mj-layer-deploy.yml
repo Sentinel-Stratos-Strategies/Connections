@@ -78,18 +78,7 @@ jobs:
         run: bash -n projects/mj-mcp-layer/cloudflare/*.sh
 
       - name: Validate mini-lane manifests
-        run: |
-          node - <<'NODE'
-          const fs = require("node:fs");
-          const files = [
-            ...fs.readdirSync("projects/mj-mcp/lanes", { withFileTypes: true })
-              .filter((entry) => entry.isDirectory())
-              .map((entry) => `projects/mj-mcp/lanes/${entry.name}/lane.manifest.json`),
-            "projects/mj-mcp/connections/infrastructure-connections.json",
-          ];
-          for (const file of files) JSON.parse(fs.readFileSync(file, "utf8"));
-          console.log(`validated ${files.length} mini-lane manifest files`);
-          NODE
+        run: npm --prefix projects/mj-mcp-layer run validate:lanes
 
       - name: Dry-run Worker bundle
         run: |
@@ -129,6 +118,11 @@ jobs:
 
       - name: Install Worker dependencies
         run: npm ci --prefix projects/mj-mcp-layer/mcp-layer --ignore-scripts --no-audit --no-fund
+
+      - name: Build dashboard assets
+        run: |
+          npm ci --prefix projects/mj-mcp-layer/frontend --ignore-scripts --no-audit --no-fund
+          npm --prefix projects/mj-mcp-layer/frontend run build
 
       - name: Apply D1 migration
         env:

@@ -1,0 +1,35 @@
+{
+  "lane": "mj-supabase",
+  "platform": "supabase",
+  "purpose": "Coordinate approved Supabase schema review, query inspection, and database operations for future MJ product lanes.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "deployment_projection",
+  "allowedActions": [
+    "project.read",
+    "schema.inspect",
+    "query.readonly",
+    "rls.review",
+    "migration.plan"
+  ],
+  "deniedActions": [
+    "database.drop",
+    "service_role_key_reveal",
+    "secret.read",
+    "permission.escalate"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "migration.apply",
+    "rls.update",
+    "edge_function.deploy",
+    "auth_settings_update"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_project_scope_only",
+    "externalWrite": "database_mutations_require_approval",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

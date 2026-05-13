@@ -5,6 +5,19 @@
   "compatibility_date": "2026-03-29",
   "preview_urls": false,
   "workers_dev": true,
+  "assets": {
+    "directory": "../frontend/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/healthz",
+      "/robots.txt",
+      "/mcp",
+      "/turn/*",
+      "/audit/*",
+      "/api/*"
+    ],
+  },
   // Custom-domain routes are currently owned by the Cloudflare platform Worker
   // `ellis-aegis-control-plane`. Keep this deploy lane on Workers.dev until an
   // explicit route cutover is approved.

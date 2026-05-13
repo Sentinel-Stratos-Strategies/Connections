@@ -1,0 +1,35 @@
+{
+  "lane": "mj-computer",
+  "platform": "computer-use",
+  "purpose": "Coordinate approved macOS desktop automation for local app settings, IDE wiring, and visual validation when the computer-use plugin is installed.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "audit_only",
+  "allowedActions": [
+    "desktop.inspect",
+    "app.open_approved",
+    "settings.navigate",
+    "screenshot.capture",
+    "local_ui.validate"
+  ],
+  "deniedActions": [
+    "password.read",
+    "keychain.export",
+    "secret.read",
+    "destructive_file_action",
+    "policy_control.bypass"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "system_settings_change",
+    "authenticated_desktop_action",
+    "app_install"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_local_ui_scope_only",
+    "externalWrite": "explicit_user_triggered_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}
