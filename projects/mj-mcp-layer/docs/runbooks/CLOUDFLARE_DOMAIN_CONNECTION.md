@@ -48,12 +48,13 @@ Do not steal apex or app routes from Kevis/Hitch public surfaces.
 
 ## Required GitHub Secrets
 
-- `CF_API_TOKEN`
+- `CLOUDFLARE_API_TOKEN` or `CF_API_TOKEN`
 - `CF_ACCOUNT_ID`
 - `CF_ZONE_ID_ELLIS`
 - `CF_ZONE_ID_HITCH`
 - `CF_ZONE_ID_KEVIS`
 - `OPERATOR_TOKEN`
+- `MCP_LEDGER_KEY`
 - optional `MCP_SMOKE_BASE_URL`, default `https://mcp.ellis-aegis.us`
 
 ## Required Cloudflare API Token Scopes
@@ -71,6 +72,8 @@ Do not steal apex or app routes from Kevis/Hitch public surfaces.
 - Zone > Workers Routes > Edit for those zones
 - Zone > Rulesets > Edit and Zone > Firewall Services > Edit for WAF/rate-limit hardening
 - Zone > Access: Apps and Policies > Edit, if Access is used as the outer identity gate
+
+If Wrangler deploy fails with `kv bindings require kv write perms [code: 10023]`, rotate the deploy token with `Account > Workers KV Storage > Edit` and update `CLOUDFLARE_API_TOKEN`.
 
 ## Host Connection Commands
 

@@ -6,12 +6,13 @@ Set these in the repository settings (`Settings > Secrets and variables > Action
 
 | Secret | Description | Used By |
 |--------|-------------|---------|
-| `CF_API_TOKEN` | Cloudflare API token for the `ellis-aegis.us`, `hitch.guru`, and `kevis.online` zones plus the MJ Worker resources | All workflows |
+| `CLOUDFLARE_API_TOKEN` or `CF_API_TOKEN` | Cloudflare API token for the `ellis-aegis.us`, `hitch.guru`, and `kevis.online` zones plus the MJ Worker resources. Workflows prefer `CLOUDFLARE_API_TOKEN` and fall back to `CF_API_TOKEN`. | All workflows |
 | `CF_ACCOUNT_ID` | Cloudflare account ID (`5b94eedaff8fb3ccaa1b607f57963e10`) | Deploy + Scan |
 | `CF_ZONE_ID_ELLIS` | Zone ID for primary authority zone (ellis-aegis.us) | Deploy + Scan |
 | `CF_ZONE_ID_HITCH` | Zone ID for hitch.guru | Deploy + Scan |
 | `CF_ZONE_ID_KEVIS` | Zone ID for kevis.online | Deploy + Scan |
 | `OPERATOR_TOKEN` | Runtime operator token used by the Worker and smoke tests | Manual deploy smoke |
+| `MCP_LEDGER_KEY` | Production signing key for ledger, visa, court, and evidence signatures | Platform proof + signed operations |
 
 ## Optional Secrets
 
@@ -27,7 +28,7 @@ Set these in the repository settings (`Settings > Secrets and variables > Action
 
 ## Token Permissions Required
 
-The `CF_API_TOKEN` must have:
+The Cloudflare deploy token must have:
 - Account > Workers Scripts > Edit
 - Account > Workers Routes > Edit
 - Account > D1 > Edit
@@ -44,9 +45,13 @@ The `CF_API_TOKEN` must have:
 - Zone > Rulesets > Edit and Zone > Firewall Services > Edit for WAF/rate-limit hardening
 - Zone > Access: Apps and Policies > Edit, if Access is used as an outer identity gate
 
+If deploy fails with `kv bindings require kv write perms [code: 10023]`, the token is missing `Account > Workers KV Storage > Edit`.
+
 ## Setting Secrets via CLI
 
 ```bash
+gh secret set CLOUDFLARE_API_TOKEN --body "your-token-here"
+# Optional compatibility alias if older scripts still reference CF_API_TOKEN:
 gh secret set CF_API_TOKEN --body "your-token-here"
 gh secret set CF_ACCOUNT_ID --body "5b94eedaff8fb3ccaa1b607f57963e10"
 gh secret set CF_ZONE_ID_ELLIS --body "zone-id-here"
@@ -54,6 +59,7 @@ gh secret set CF_ZONE_ID_HITCH --body "zone-id-here"
 gh secret set CF_ZONE_ID_KEVIS --body "zone-id-here"
 gh secret set OPERATOR_TOKEN --body "long-random-operator-token"
 gh secret set MCP_SMOKE_BASE_URL --body "https://mcp.ellis-aegis.us"
+gh secret set MCP_LEDGER_KEY --body "long-random-ledger-signing-key"
 ```
 
 Set the same runtime token in Cloudflare before deploy:
