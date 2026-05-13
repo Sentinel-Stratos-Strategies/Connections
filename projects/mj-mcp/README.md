@@ -88,4 +88,7 @@ Truth cannot be overwritten by external lanes.
 
 ## Build status
 
-This scaffold is intentionally separate from the enterprise runtime in `projects/mj-mcp-layer/`. It defines mini-MJ lane contracts and the connection map that lets Codex, Cloudflare, GitHub, OpenAI, Google, Notion, Linear, and future lanes attach to the enterprise control plane without becoming a single over-privileged integration.
+This scaffold is intentionally separate from the enterprise runtime in `projects/mj-mcp-layer/`.
+It defines mini-MJ lane contracts and the connection map that lets Codex, Cloudflare, GitHub,
+OpenAI, Google, Notion, Linear, and future lanes attach to the enterprise control plane without
+becoming a single over-privileged integration.
