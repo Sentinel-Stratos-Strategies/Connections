@@ -4,9 +4,12 @@
   "private": true,
   "description": "Workspace utilities for MJ MCP Layer automation scripts.",
   "scripts": {
-    "build": "npm --prefix platform run build",
-    "check": "npm --prefix mcp-layer run typecheck && npm --prefix platform run typecheck",
+    "build": "npm --prefix platform run build && npm --prefix frontend run build",
+    "check": "npm --prefix mcp-layer run typecheck && npm --prefix platform run typecheck && npm --prefix frontend run typecheck",
     "test": "npm --prefix mcp-layer test && npm --prefix platform test",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:check": "npm --prefix frontend run typecheck",
     "mj:golden": "npm run check && npm test && npm run build"
   },
   "dependencies": {
