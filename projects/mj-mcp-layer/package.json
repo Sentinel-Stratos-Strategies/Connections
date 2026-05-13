@@ -6,7 +6,8 @@
   "scripts": {
     "build": "npm --prefix platform run build",
     "check": "npm --prefix mcp-layer run typecheck && npm --prefix platform run typecheck",
-    "test": "npm --prefix mcp-layer test && npm --prefix platform test"
+    "test": "npm --prefix mcp-layer test && npm --prefix platform test",
+    "mj:golden": "npm run check && npm test && npm run build"
   },
   "dependencies": {
     "yaml": "^2.8.4"
