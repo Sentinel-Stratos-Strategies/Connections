@@ -126,6 +126,14 @@ body{font-family:var(--FB);color:var(--cream);background:var(--bg);min-height:10
 .live-pill{display:flex;align-items:center;gap:.5rem;padding:8px 16px;border-radius:999px;border:1px solid rgba(6,214,160,.35);background:rgba(6,214,160,.08);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--teal);white-space:nowrap}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+.live-pill.hp-unknown{border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.1);color:var(--amber)}
+.live-pill.hp-unknown .live-dot{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.live-pill.hp-pass{border-color:rgba(6,214,160,.35);background:rgba(6,214,160,.08);color:var(--teal)}
+.live-pill.hp-pass .live-dot{background:var(--teal);box-shadow:0 0 10px var(--teal)}
+.live-pill.hp-fail{border-color:rgba(255,107,107,.45);background:rgba(255,107,107,.1);color:var(--coral)}
+.live-pill.hp-fail .live-dot{background:var(--coral);box-shadow:0 0 10px var(--coral);animation:none}
+.live-pill.hp-offline{border-color:rgba(255,248,238,.14);background:rgba(255,248,238,.04);color:var(--muted)}
+.live-pill.hp-offline .live-dot{background:var(--faint);box-shadow:none;animation:none}
 
 /* ════ SECTION LABEL ════ */
 .sec-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);padding:.25rem 0;display:flex;align-items:center;gap:.75rem}
@@ -346,7 +354,7 @@ tr:hover td{background:rgba(58,134,255,.06)}
     <h1 class="hero-h1">MJ Layer<br><em>Command Center</em></h1>
     <p class="hero-lede">A governed cloud-shell cockpit for opening lanes, closing doors, dispatching providers, and proving every play &mdash; across every tenant.</p>
   </div>
-  <div class="live-pill"><span class="live-dot"></span>System Online</div>
+  <div class="live-pill hp-unknown" id="hp-status" role="status" aria-live="polite" aria-busy="true"><span class="live-dot" id="hp-dot"></span><span id="hp-label">Checking</span></div>
 </section>
 
 <!-- ══ SYSTEM STATE (shared) ══ -->
@@ -572,6 +580,28 @@ function bindSearch(id,scope){
 }
 bindSearch('ai','#vp-admin .pal-card');
 bindSearch('ci-inp','#vp-customer .pal-card');
+
+async function probeHealthz(){
+  const wrap=document.getElementById('hp-status');
+  const label=document.getElementById('hp-label');
+  if(!wrap||!label)return;
+  try{
+    const r=await fetch('/healthz',{cache:'no-store',method:'GET'});
+    let ok=false;
+    try{ok=r.ok&&(await r.clone().json()).status==='ok';}catch{ok=false;}
+    wrap.classList.remove('hp-unknown');
+    wrap.setAttribute('aria-busy','false');
+    if(ok){wrap.classList.add('hp-pass');label.textContent='Pass';}
+    else{wrap.classList.add('hp-fail');label.textContent='Fail';}
+  }catch{
+    wrap.classList.remove('hp-unknown');
+    wrap.classList.add('hp-offline');
+    wrap.setAttribute('aria-busy','false');
+    label.textContent='Offline preview';
+  }
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',probeHealthz);
+else probeHealthz();
 
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){

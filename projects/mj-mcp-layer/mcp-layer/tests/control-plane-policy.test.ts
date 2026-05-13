@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
 import worker, { POLICY } from "../src/index";
 
@@ -150,6 +152,13 @@ describe("control-plane policy", () => {
     const response = await fetchWorker("/dashboard", { method: "GET" });
     assert.equal(response.status, 503);
     assert.match(await response.text(), /missing ASSETS binding/);
+  });
+
+  test("dashboard HTML probes GET /healthz read-only (CP-4)", () => {
+    const dashboardSource = fileURLToPath(new URL("../../dashboard/mj-edge-v2.html", import.meta.url));
+    const html = readFileSync(dashboardSource, "utf8");
+    assert.match(html, /fetch\s*\(\s*["']\/healthz["']/);
+    assert.match(html, /\bid\s*=\s*["']hp-status["']/);
   });
 
   test("dashboard delegates to ASSETS fetcher", async () => {
