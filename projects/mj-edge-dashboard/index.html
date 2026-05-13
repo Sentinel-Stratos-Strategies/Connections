@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MJ Edge — Customer & Admin Frontend</title>
+  <style>
+    :root{--bg:#0b0d16;--panel:#13182a;--text:#eef2ff;--muted:#9aa6c0;--accent:#5eead4;--danger:#fb7185;--warn:#fbbf24;--ok:#34d399}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1300px;margin:0 auto;padding:24px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .tabs button{background:#1d2338;color:var(--muted);border:1px solid #2b3553;padding:10px 14px;border-radius:10px;cursor:pointer}
+    .tabs button.active{color:#fff;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+    .grid{display:grid;gap:14px}
+    .kpi{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px}
+    .card{background:var(--panel);border:1px solid #2a3150;border-radius:14px;padding:14px}
+    .small{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .num{font-size:28px;font-weight:700;margin-top:6px}
+    .panel{margin-top:18px}
+    .panel h3{margin:0 0 10px}
+    .split{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+    table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px solid #2a3150;font-size:14px} th{color:var(--muted);text-align:left}
+    .pill{padding:3px 8px;border-radius:999px;border:1px solid currentColor;font-size:12px}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .danger{color:var(--danger)}
+    .commands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .cmd{background:#1a2035;border:1px solid #2b3553;border-radius:12px;padding:10px;cursor:pointer}
+    .cmd strong{display:block}
+    .log{max-height:300px;overflow:auto}
+    .hidden{display:none}
+    @media (max-width:900px){.kpi{grid-template-columns:repeat(2,1fr)}.split{grid-template-columns:1fr}.commands{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1>MJ Edge — Genesis OS Command Layer</h1>
+      <div class="tabs" role="tablist" aria-label="views">
+        <button id="tab-admin" class="active" role="tab" aria-selected="true" aria-controls="admin" onclick="switchView('admin')">Admin</button>
+        <button id="tab-customer" role="tab" aria-selected="false" aria-controls="customer" onclick="switchView('customer')">Customer</button>
+      </div>
+    </div>
+
+    <section id="admin" role="tabpanel">
+      <div class="grid kpi">
+        <div class="card"><div class="small">Active Users</div><div class="num" id="kpi-users">0</div></div>
+        <div class="card"><div class="small">Active Subs</div><div class="num" id="kpi-subs">0</div></div>
+        <div class="card"><div class="small">MRR</div><div class="num" id="kpi-mrr">$0</div></div>
+        <div class="card"><div class="small">At-Risk Churn</div><div class="num" id="kpi-risk">0</div></div>
+      </div>
+
+      <div class="panel split">
+        <div class="card">
+          <h3>Tenant + Subscription Monitoring</h3>
+          <input id="search" placeholder="Filter by tenant/email/plan" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2b3553;background:#0f1425;color:#fff"/>
+          <table>
+            <thead><tr><th>Tenant</th><th>Owner</th><th>Plan</th><th>Status</th><th>MRR</th><th>Last Seen</th></tr></thead>
+            <tbody id="tenant-body"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Command Center</h3>
+          <div class="commands">
+            <button class="cmd" onclick="act('Provision customer workspace')"><strong>Provision</strong><small>create tenant</small></button>
+            <button class="cmd" onclick="act('Suspend subscription')"><strong>Suspend</strong><small>pause billing</small></button>
+            <button class="cmd" onclick="act('Trigger renewal reminder')"><strong>Renewal</strong><small>notify customer</small></button>
+            <button class="cmd" onclick="act('Open fraud/risk workflow')"><strong>Risk Scan</strong><small>review anomalies</small></button>
+            <button class="cmd" onclick="act('Export usage report')"><strong>Usage Export</strong><small>csv/json</small></button>
+            <button class="cmd" onclick="act('Launch account review')"><strong>Account Review</strong><small>manual QA</small></button>
+          </div>
+          <h3 style="margin-top:14px">Event Log</h3>
+          <div id="log" class="log"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="small">API Token (local stub)</div>
+        <input id="api-token" value="mj-local-dev-token" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2b3553;background:#0f1425;color:#fff"/>
+        <button class="cmd" style="margin-top:10px" onclick="reloadData()"><strong>Reload from API</strong><small>GET /api/tenants and /api/events</small></button>
+      </div>
+
+        </div>
+      </div>
+    </section>
+
+    <section id="customer" class="hidden" role="tabpanel">
+      <div class="grid kpi">
+        <div class="card"><div class="small">Current Plan</div><div class="num" id="cust-plan">Pro</div></div>
+        <div class="card"><div class="small">This Month API Calls</div><div class="num" id="cust-api">32,400</div></div>
+        <div class="card"><div class="small">Next Invoice</div><div class="num" id="cust-invoice">$480</div></div>
+        <div class="card"><div class="small">Subscription Status</div><div class="num ok" id="cust-status">Active</div></div>
+      </div>
+      <div class="panel card">
+        <h3>Self-Service Actions</h3>
+        <div class="commands">
+          <button class="cmd" onclick="act('Customer deployed latest build')"><strong>Deploy latest build</strong><small>production rollout</small></button>
+          <button class="cmd" onclick="act('Customer opened billing portal')"><strong>Billing portal</strong><small>cards + invoices</small></button>
+          <button class="cmd" onclick="act('Customer generated API key')"><strong>Generate API key</strong><small>credential rotation</small></button>
+          <button class="cmd" onclick="act('Customer reviewed usage analytics')"><strong>Usage analytics</strong><small>quota monitoring</small></button>
+          <button class="cmd" onclick="act('Customer submitted support ticket')"><strong>Support ticket</strong><small>priority queue</small></button>
+          <button class="cmd" onclick="act('Customer started rollback')"><strong>Rollback</strong><small>restore previous</small></button>
+        </div>
+      </div>
+    </section>
+  </div>
+<script>
+const tenants = [
+  {tenant:'Hitch App', owner:'ops@hitch.io', plan:'Enterprise', status:'active', mrr:1200, lastSeen:'2m ago'},
+  {tenant:'Broverse Core', owner:'admin@broverse.io', plan:'Enterprise', status:'active', mrr:2400, lastSeen:'1m ago'},
+  {tenant:'Client Alpha', owner:'owner@alpha.io', plan:'Pro', status:'watching', mrr:480, lastSeen:'7m ago'},
+  {tenant:'Client Beta', owner:'founder@beta.io', plan:'Starter', status:'building', mrr:120, lastSeen:'13m ago'},
+  {tenant:'Dev Sandbox', owner:'dev@sandbox.io', plan:'Trial', status:'trial', mrr:0, lastSeen:'22m ago'}
+];
+
+function statusClass(s){if(s==='active') return 'ok'; if(s==='watching' || s==='building' || s==='trial') return 'warn'; return 'danger'}
+function render(rows){
+  const tb=document.getElementById('tenant-body');
+  tb.innerHTML = rows.map(r => `<tr><td>${r.tenant}</td><td>${r.owner}</td><td>${r.plan}</td><td><span class="pill ${statusClass(r.status)}">${r.status}</span></td><td>$${r.mrr}</td><td>${r.lastSeen}</td></tr>`).join('');
+  document.getElementById('kpi-users').textContent = rows.length;
+  document.getElementById('kpi-subs').textContent = rows.filter(r=>r.plan!=='Trial').length;
+  document.getElementById('kpi-mrr').textContent = `$${rows.reduce((a,b)=>a+b.mrr,0).toLocaleString()}`;
+  document.getElementById('kpi-risk').textContent = rows.filter(r=>r.status!=='active').length;
+}
+function switchView(v){
+  const admin=v==='admin';
+  document.getElementById('admin').classList.toggle('hidden', !admin);
+  document.getElementById('customer').classList.toggle('hidden', admin);
+  document.getElementById('tab-admin').classList.toggle('active', admin);
+  document.getElementById('tab-customer').classList.toggle('active', !admin);
+  document.getElementById('tab-admin').setAttribute('aria-selected', admin);
+  document.getElementById('tab-customer').setAttribute('aria-selected', !admin);
+}
+
+async function apiGet(path){
+  const token=document.getElementById('api-token')?.value?.trim() || '';
+  const res=await fetch(path,{headers:{Authorization:`Bearer ${token}`}});
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function reloadData(){
+  try{
+    const [tenantResp, eventResp]=await Promise.all([apiGet('/api/tenants'), apiGet('/api/events')]);
+    tenants.length=0;
+    tenantResp.tenants.forEach(t=>tenants.push(t));
+    render(tenants);
+    const el=document.getElementById('log');
+    el.innerHTML='';
+    eventResp.events.forEach(ev=>{
+      el.innerHTML += `<div style="padding:8px;border-bottom:1px solid #2a3150">📡 ${ev.message}<br><span style="color:#9aa6c0">${ev.ts}</span></div>`;
+    });
+    act('Reloaded tenants/events from API');
+  }catch(err){
+    act(`API reload failed (${err.message}); using local in-page dataset`);
+  }
+}
+
+function act(msg){
+  const el=document.getElementById('log');
+  const now=new Date().toISOString();
+  el.innerHTML = `<div style="padding:8px;border-bottom:1px solid #2a3150">✅ ${msg}<br><span style="color:#9aa6c0">${now}</span></div>` + el.innerHTML;
+}
+document.getElementById('search').addEventListener('input', (e)=>{
+  const q=e.target.value.toLowerCase().trim();
+  render(tenants.filter(t=>`${t.tenant} ${t.owner} ${t.plan}`.toLowerCase().includes(q)));
+});
+render(tenants);
+act('Dashboard initialized and monitoring subscriptions');
+reloadData();
+</script>
+</body>
+</html>

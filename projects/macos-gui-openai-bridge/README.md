@@ -54,6 +54,9 @@ python3 src/bridge.py validate --kind check --file kits/check-kit.example.json
 python3 src/bridge.py push-agent --file kits/agent-kit.example.json
 python3 src/bridge.py push-thread --file kits/chat-thread-kit.example.json
 python3 src/bridge.py push-widget --file kits/widget-kit.example.json
+
+# Optional: force legacy JSON output (default is dashboard)
+python3 src/bridge.py push-agent --file kits/agent-kit.example.json --output-format json
 ```
 
 ## Documentation bundle
