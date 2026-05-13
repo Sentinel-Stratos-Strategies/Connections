@@ -1,6 +1,7 @@
 # MJ Lane Connection Guide
 
 **Platform:** Ellis Aegis / MJ MCP Control Plane  
+**Dashboard:** `https://mcp.ellis-aegis.us/`
 **MCP Endpoint:** `https://mcp.ellis-aegis.us/mcp`  
 **Health Check:** `https://mcp.ellis-aegis.us/healthz`  
 **Version:** mj-edge-unified-v2  
@@ -47,6 +48,8 @@ Every request (except `/healthz`) requires all four policy headers plus a bearer
 
 | Path | Methods | Purpose |
 |------|---------|---------|
+| `GET /` | Public | MJ Edge enterprise dashboard |
+| `GET /assets/*` | Public | Dashboard static assets |
 | `GET /healthz` | Public | System health, no auth required |
 | `GET /mcp` | mcp.admin, forensic.read | MCP capability manifest |
 | `POST /mcp` | mcp.admin | Execute MCP tool calls (JSON-RPC 2.0) |
@@ -59,6 +62,7 @@ Every request (except `/healthz`) requires all four policy headers plus a bearer
 | `GET /api/events` | forensic.read, mcp.admin | List events |
 | `GET /api/incidents` | forensic.read, mcp.admin | List incidents |
 | `POST /api/checks/run` | cloud.ops, security.status, mcp.admin | Dispatch a watcher check |
+| `GET /api/console/lanes` | forensic.read, mcp.admin | List registered mini-lanes |
 
 ---
 
@@ -97,6 +101,7 @@ The `/mcp` `POST` endpoint follows the MCP specification.
 | `drift_scan` | Dispatches a drift detection watcher job |
 | `audit_query` | Queries the audit event log |
 | `change_request` | Submits a change request for operator approval |
+| `console_lanes` | Returns the registered console/connector mini-lanes |
 
 ---
 

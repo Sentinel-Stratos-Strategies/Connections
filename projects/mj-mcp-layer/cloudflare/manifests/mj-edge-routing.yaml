@@ -6,6 +6,10 @@ authority_hosts:
   - host: mj.ellis-aegis.us
     role: primary_operator_control_plane
     paths:
+      - /
+      - /index.html
+      - /assets/*
+      - /favicon.ico
       - /mcp
       - /turn/*
       - /audit/*
@@ -14,6 +18,10 @@ authority_hosts:
   - host: mcp.ellis-aegis.us
     role: protocol_entry
     paths:
+      - /
+      - /index.html
+      - /assets/*
+      - /favicon.ico
       - /mcp
       - /turn/*
       - /audit/*
@@ -22,6 +30,10 @@ authority_hosts:
   - host: codex.ellis-aegis.us
     role: codex_operator_lane
     paths:
+      - /
+      - /index.html
+      - /assets/*
+      - /favicon.ico
       - /mcp
       - /turn/*
       - /audit/*
@@ -69,6 +81,10 @@ project_lanes:
 
 policies:
   allowed_paths:
+    - /
+    - /index.html
+    - /assets/*
+    - /favicon.ico
     - /mcp
     - /mcp/*
     - /turn/*

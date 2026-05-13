@@ -55,6 +55,11 @@ record(results, "healthz_public", health.status === 200 && health.body?.status =
   status: health.status,
 });
 
+const dashboard = await requestJson(baseUrl, "/");
+record(results, "dashboard_public", dashboard.status === 200 && typeof dashboard.body === "string" && dashboard.body.includes("MJ Edge"), {
+  status: dashboard.status,
+});
+
 const mcpWithoutPolicy = await requestJson(baseUrl, "/mcp");
 record(results, "mcp_requires_policy_headers", mcpWithoutPolicy.status === 403, {
   status: mcpWithoutPolicy.status,

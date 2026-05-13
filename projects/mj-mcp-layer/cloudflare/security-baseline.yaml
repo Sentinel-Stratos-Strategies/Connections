@@ -2,7 +2,7 @@
 # Codex reads this file. Do not hand-edit Cloudflare without updating here.
 version: 1
 zone: ellis-aegis.us
-last_updated: 2026-04-30
+last_updated: 2026-05-13
 owner: operator@ellis-aegis.us
 
 hosts:
@@ -39,6 +39,14 @@ hosts:
 # Allowed methods + paths per role
 allow_matrix:
   mcp:
+    - path: "/"
+      methods: ["GET", "HEAD", "OPTIONS"]
+    - path: "/index.html"
+      methods: ["GET", "HEAD", "OPTIONS"]
+    - path_prefix: "/assets/"
+      methods: ["GET", "HEAD", "OPTIONS"]
+    - path: "/favicon.ico"
+      methods: ["GET", "HEAD", "OPTIONS"]
     - path: "/mcp"
       methods: ["POST", "GET", "OPTIONS"]
     - path_prefix: "/turn/"
@@ -55,11 +63,11 @@ allow_matrix:
 # slot can already be occupied by legacy Cloudflare posture.
 waf_rules:
   - description: "MCP-fleet :: block disallowed methods on protected endpoints"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and ((http.request.uri.path eq "/mcp" and not http.request.method in {"POST" "GET" "OPTIONS"}) or (starts_with(http.request.uri.path, "/turn/") and not http.request.method in {"POST" "OPTIONS"}) or (starts_with(http.request.uri.path, "/audit/") and not http.request.method in {"GET" "OPTIONS"}) or (starts_with(http.request.uri.path, "/api/") and not http.request.method in {"GET" "POST" "OPTIONS"})))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (((http.request.uri.path eq "/" or http.request.uri.path eq "/index.html" or starts_with(http.request.uri.path, "/assets/") or http.request.uri.path eq "/favicon.ico") and not http.request.method in {"GET" "HEAD" "OPTIONS"}) or (http.request.uri.path eq "/mcp" and not http.request.method in {"POST" "GET" "OPTIONS"}) or (starts_with(http.request.uri.path, "/turn/") and not http.request.method in {"POST" "OPTIONS"}) or (starts_with(http.request.uri.path, "/audit/") and not http.request.method in {"GET" "OPTIONS"}) or (starts_with(http.request.uri.path, "/api/") and not http.request.method in {"GET" "POST" "OPTIONS"})))'
     action: block
 
   - description: "MCP-fleet :: block unknown paths"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and not (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/") or http.request.uri.path eq "/healthz"))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and not (http.request.uri.path eq "/" or http.request.uri.path eq "/index.html" or starts_with(http.request.uri.path, "/assets/") or http.request.uri.path eq "/favicon.ico" or http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/") or http.request.uri.path eq "/healthz"))'
     action: block
 
   - description: "MCP-fleet :: require operator auth on /mcp + /turn/*"

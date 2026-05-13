@@ -28,9 +28,11 @@ The Worker config lives at `projects/mj-mcp-layer/mcp-layer/wrangler.jsonc`.
 
 | Host route | Worker | Purpose |
 |---|---|---|
-| `mj.ellis-aegis.us/*` | `mj-edge` | operator control plane |
-| `mcp.ellis-aegis.us/*` | `mj-edge` | MCP protocol entry |
-| `codex.ellis-aegis.us/*` | `mj-edge` | Codex mini-lane authority |
+| `mj.ellis-aegis.us/*` | `mj-edge` | operator control plane and dashboard |
+| `mcp.ellis-aegis.us/*` | `mj-edge` | MCP protocol entry and dashboard |
+| `codex.ellis-aegis.us/*` | `mj-edge` | Codex mini-lane authority and dashboard |
+
+The public dashboard paths are `/`, `/index.html`, `/assets/*`, and `/favicon.ico`. Protected control-plane paths stay `/mcp`, `/turn/*`, `/audit/*`, `/api/*`, and `/healthz`.
 
 Project lanes stay narrow:
 
@@ -94,6 +96,7 @@ npm run manifest:deployment
 The smoke must prove:
 
 - `/healthz` returns `200`.
+- `/` returns the MJ Edge dashboard HTML.
 - `/mcp` without MJ policy headers returns `403`.
 - `/mcp` with policy headers plus operator auth returns `200`.
 - `/api/change-request` cannot bypass the policy gate.
