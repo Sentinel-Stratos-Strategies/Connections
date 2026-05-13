@@ -165,6 +165,7 @@ describe("control-plane policy", () => {
     const response = await fetchWorker("/dashboard", { method: "GET" }, createEnv({ ASSETS: assets }));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type")?.includes("text/html"), true);
+    assert.match(String(response.headers.get("content-security-policy") ?? ""), /default-src 'self'/);
     assert.match(await response.text(), /<title>ok<\/title>/);
   });
 });

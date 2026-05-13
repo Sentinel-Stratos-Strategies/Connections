@@ -42,6 +42,10 @@ interface PolicyConfig {
 
 const WATCHER_KINDS: WatcherKind[] = ["edge-abuse", "drift", "origin-health", "digest"];
 
+/** Mirrors `<meta http-equiv="Content-Security-Policy">` on dashboard HTML (CP-3). */
+const DASHBOARD_CSP =
+  "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+
 export const POLICY: PolicyConfig = {
   deny_by_default: true,
   allowed_paths: [
@@ -587,6 +591,9 @@ async function serveDashboard(request: Request, env: Env): Promise<Response> {
 
   const assetResponse = await env.ASSETS.fetch(assetRequest);
   const headers = new Headers(assetResponse.headers);
+  if (pathname.endsWith(".html")) {
+    headers.set("Content-Security-Policy", DASHBOARD_CSP);
+  }
   if (!headers.has("cache-control")) {
     headers.set("cache-control", "public, max-age=120");
   }

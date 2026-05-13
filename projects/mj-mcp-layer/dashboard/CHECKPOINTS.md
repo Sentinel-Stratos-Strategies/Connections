@@ -18,7 +18,7 @@ Use this list when running `checkpoint.sh` or opening a PR: mention **`CP-<n>`**
 ## Convention
 
 - **Done** — merged or accepted on the review branch you care about.
-- **Next** — default priority after CP-3.
+- **Next** — default priority after the latest completed checkpoint (see table).
 - **Planned** — ordered backlog; re-sequence with Sentinel if product priorities shift.
 
 Reference: MJ MCP 10/10 handoff (`dashboard` routes, evidence, tenant isolation) and enterprise MJ Layer non-goals for PR scope.

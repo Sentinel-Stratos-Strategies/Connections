@@ -1,16 +1,21 @@
 # MJ Edge dashboard vendor bundle (CP-3)
 
-Runtime `/dashboard` loads **only** same-origin assets under `./vendor/` (no Google Fonts or unpkg in the HTML).
+Runtime loads **only same-origin** `/dashboard/vendor/*` — no `fonts.googleapis.com`, `fonts.gstatic.com`, or third-party CDNs.
 
-| File | Source (pinned; audit / refresh when upgrading) |
-|------|--------------------------------------------------|
-| `lucide-0.468.0.min.js` | `https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js` |
-| `fonts/inter-latin-wght-normal.woff2` | `@fontsource-variable/inter@5.1.1` (jsDelivr file mirror) |
-| `fonts/space-grotesk-latin-wght-normal.woff2` | `@fontsource-variable/space-grotesk@5.1.1` |
-| `fonts.css` | repo-owned `@font-face` for those woff2 files |
+| Artifact | Pinned source (download / verification only) |
+|----------|-----------------------------------------------|
+| `lucide.min.js` | https://unpkg.com/lucide@**0.469.0**/dist/umd/lucide.min.js |
+| `fonts/inter-latin-wght-normal.woff2` | Google Fonts CSS (`Inter` variable latin); fetched from `fonts.gstatic.com` URL at pin time |
+| `fonts/space-grotesk-latin-wght-normal.woff2` | Same pattern for `Space Grotesk` variable latin |
+| `fonts.css` | Local `@font-face` pointing at the two `.woff2` files |
 
-**SRI** on Lucide in `mj-edge-v2.html`. Recompute after any Lucide file change:
+**SRI:** `mj-edge-v2.html` sets `integrity="sha384-…"` on the Lucide `<script>`. Recompute after any Lucide upgrade:
 
 ```bash
-node -e "const c=require('crypto');const fs=require('fs');const b=fs.readFileSync('vendor/lucide-0.468.0.min.js');console.log('sha384-'+c.createHash('sha384').update(b).digest('base64'));"
+openssl dgst -sha384 -binary dashboard/vendor/lucide.min.js | openssl base64 -A
+# use as integrity="sha384-<output>"
 ```
+
+**CSP:** Dashboard HTML includes a matching `<meta http-equiv="Content-Security-Policy">`; the Worker also sets the same policy on `*.html` asset responses (`DASHBOARD_CSP` in `mcp-layer/src/index.ts`).
+
+Bump Lucide or fonts: re-download into `vendor/`, refresh SRI + this table, run `sync-public.sh`.
