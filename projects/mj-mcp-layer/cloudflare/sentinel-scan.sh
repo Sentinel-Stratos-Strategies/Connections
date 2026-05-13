@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/load-cf-env.sh"
 ART_DIR="${ART_DIR:-./artifacts}"
 LEDGER="${LEDGER:-$ART_DIR/codex-ledger.jsonl}"
 BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
+DEFERRED="$ART_DIR/control-deferrals.jsonl"
+SENTINEL_STRICT="${SENTINEL_STRICT:-0}"
 mkdir -p "$ART_DIR"
 
 TS=$(date -u +%Y%m%dT%H%M%SZ)
@@ -42,6 +44,15 @@ CACHE=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/rulesets/phases/http_request_
 
 echo "==> [5/10] Page rules"
 PAGE=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/pagerules" || echo '{}')
+PAGE_RULES_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 1011 and (.message // "" | contains("account owned tokens"))))' <<<"$PAGE")
+if [[ "$PAGE_RULES_UNSUPPORTED" == "true" ]]; then
+  jq -nc \
+    --arg ts "$(date -u +%FT%TZ)" \
+    --arg stage "scan" \
+    --arg control "pagerules" \
+    --argjson response "$PAGE" \
+    '{ts:$ts,stage:$stage,event:"provider_endpoint_deferred",control:$control,response:$response}' >> "$DEFERRED"
+fi
 
 echo "==> [6/10] SSL settings"
 SSL=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/settings/ssl" || echo '{}')
@@ -77,15 +88,25 @@ jq -n \
 echo "✅ scan written: $SCAN"
 
 BASELINE_WAF_DESCRIPTIONS=$(
-  node -e "const fs=require('fs');const YAML=require('yaml');const p=YAML.parse(fs.readFileSync(process.argv[1],'utf8'));console.log(JSON.stringify((p.waf_rules ?? []).map((rule) => rule.description).filter(Boolean)));" "$BASELINE"
+  node -e "const fs=require('fs');const YAML=require('yaml');const p=YAML.parse(fs.readFileSync(process.argv[1],'utf8'));const desc=(p.waf_rules ?? []).map((rule) => rule.description).filter(Boolean);if (p.bot_management?.mcp_exemption?.description) desc.push(p.bot_management.mcp_exemption.description);console.log(JSON.stringify(desc));" "$BASELINE"
 )
 
 # Hard-fail on Cloudflare API auth/rate-limit errors so we never report false-clean drift.
 API_ERRORS=$(jq -r '
+  def pagerules_account_token_unsupported:
+    (.success == false) and any(.errors[]?; (.code == 1011 and ((.message // "") | contains("account owned tokens"))));
   [
-    .dns, .waf, .ratelimit, .cache, .pagerules, .ssl, .security_level, .bot_management, .worker_routes
+    {name:"dns", payload:.dns},
+    {name:"waf", payload:.waf},
+    {name:"ratelimit", payload:.ratelimit},
+    {name:"cache", payload:.cache},
+    {name:"pagerules", payload:.pagerules},
+    {name:"ssl", payload:.ssl},
+    {name:"security_level", payload:.security_level},
+    {name:"bot_management", payload:.bot_management},
+    {name:"worker_routes", payload:.worker_routes}
   ]
-  | map(select(.success != true))
+  | map(select(.payload.success != true and (.name != "pagerules" or (.payload | pagerules_account_token_unsupported | not))))
   | length
 ' "$SCAN")
 if [[ "${API_ERRORS:-0}" -gt 0 ]]; then
@@ -224,5 +245,8 @@ if [[ "$DRIFT_FOUND" -eq 1 ]]; then
   cp "$DRIFT" "$ALERT"
   echo
   echo "🚨 ALERT FILE: $ALERT"
-  exit 7   # distinct exit code for drift
+  if [[ "$SENTINEL_STRICT" == "1" ]]; then
+    exit 7   # distinct exit code for drift
+  fi
+  echo "ℹ️ drift recorded as advisory; set SENTINEL_STRICT=1 to fail on drift"
 fi

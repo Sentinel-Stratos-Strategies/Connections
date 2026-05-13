@@ -29,6 +29,12 @@ hosts:
     canonical: false
     redirect_to: antigravity.ellis-aegis.us
     redirect_enabled: false   # flip to true if Joe wants 301; default false to preserve typo-safe behavior
+  - host: hitch.guru
+    role: project_lane
+    canonical: true
+  - host: kevis.online
+    role: project_lane
+    canonical: true
 
 # Allowed methods + paths per role
 allow_matrix:
@@ -45,47 +51,34 @@ allow_matrix:
       methods: ["GET"]
 
 # WAF custom rules (phase: http_request_firewall_custom)
+# Keep this list compact. Some zones only allow five custom WAF rules, and one
+# slot can already be occupied by legacy Cloudflare posture.
 waf_rules:
-  - description: "MCP-fleet :: block disallowed methods on /mcp"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and http.request.uri.path eq "/mcp" and not http.request.method in {"POST" "GET" "OPTIONS"})'
-    action: block
-
-  - description: "MCP-fleet :: block disallowed methods on /turn/*"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and starts_with(http.request.uri.path, "/turn/") and not http.request.method in {"POST" "OPTIONS"})'
-    action: block
-
-  - description: "MCP-fleet :: block disallowed methods on /api/*"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and starts_with(http.request.uri.path, "/api/") and not http.request.method in {"GET" "POST" "OPTIONS"})'
+  - description: "MCP-fleet :: block disallowed methods on protected endpoints"
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and ((http.request.uri.path eq "/mcp" and not http.request.method in {"POST" "GET" "OPTIONS"}) or (starts_with(http.request.uri.path, "/turn/") and not http.request.method in {"POST" "OPTIONS"}) or (starts_with(http.request.uri.path, "/audit/") and not http.request.method in {"GET" "OPTIONS"}) or (starts_with(http.request.uri.path, "/api/") and not http.request.method in {"GET" "POST" "OPTIONS"})))'
     action: block
 
   - description: "MCP-fleet :: block unknown paths"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and not (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/") or http.request.uri.path eq "/healthz"))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and not (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/") or http.request.uri.path eq "/healthz"))'
     action: block
 
   - description: "MCP-fleet :: require operator auth on /mcp + /turn/*"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")) and http.request.method ne "OPTIONS" and not (http.request.headers["authorization"][0] matches "^Bearer\\s.+" or http.request.headers["x-ellis-aegis-token"][0] ne ""))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")) and http.request.method ne "OPTIONS" and len(http.request.headers["authorization"]) eq 0 and len(http.request.headers["x-ellis-aegis-token"]) eq 0)'
     action: block
 
 # Rate limiting (phase: http_ratelimit)
 rate_limits:
-  - description: "MCP-fleet :: /mcp soft cap"
-    match_expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and http.request.uri.path eq "/mcp")'
-    requests_per_period: 120
-    period_seconds: 60
-    mitigation_timeout_seconds: 60
-    action: managed_challenge
-
-  - description: "MCP-fleet :: /turn/* hard cap"
-    match_expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and starts_with(http.request.uri.path, "/turn/"))'
-    requests_per_period: 60
-    period_seconds: 60
-    mitigation_timeout_seconds: 120
+  - description: "MCP-fleet :: control-plane burst cap"
+    match_expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")))'
+    requests_per_period: 20
+    period_seconds: 10
+    mitigation_timeout_seconds: 10
     action: block
 
 # Cache rules (phase: http_request_cache_settings)
 cache_rules:
   - description: "MCP-fleet :: bypass cache on dynamic endpoints"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/")))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/")))'
     cache: bypass
 
 # Bot management posture
@@ -95,7 +88,7 @@ bot_management:
     likely_automated: managed_challenge
   mcp_exemption:
     description: "MCP-fleet :: skip bot fight on /mcp + /turn/* (clients are bots by design)"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")))'
     action: skip
     skip_phases: [http_request_firewall_managed]
 
