@@ -7,6 +7,8 @@ import type { MutationBudgetEngine, BudgetCheckResult } from "./mutation-budget.
 import type { ReputationEngine, AgentReputation } from "./reputation-engine.js";
 import type { InventorySnapshot, ProviderName } from "./types.js";
 
+const EMPTY_PROVIDER_PLANS = {} as Record<ProviderName, string>;
+
 export type CourtRole =
   | "petitioner"
   | "compiler"
@@ -362,9 +364,9 @@ export class AgentCourt {
       id: "none",
       intent,
       timestamp: new Date().toISOString(),
-      policy: { version: 0, name: "", targetProviders: [], zones: [], securityDefaults: { denyByDefault: true, requiredHeaders: [] }, policies: { waf: { rules: [] }, rateLimit: { rules: [] } }, rbac: { tenants: [] }, audit: { enabled: true, retention: "90 days", immutable: true } },
+      policy: { version: 0, name: "", targetProviders: [] as ProviderName[], zones: [], securityDefaults: { denyByDefault: true, requiredHeaders: [] }, policies: { waf: { rules: [] }, rateLimit: { rules: [] } }, rbac: { tenants: [] }, audit: { enabled: true, retention: "90 days", immutable: true } },
       policy_diff: "",
-      provider_plans: {},
+      provider_plans: EMPTY_PROVIDER_PLANS,
       blast_radius: { tenants_affected: [], endpoints_affected: [], providers_affected: [], estimated_risk: "low", max_users_impacted: "0", reversible: true },
       test_cases: [],
       rollback_recipe: { steps: [], verification: [], estimated_duration_seconds: 0 },

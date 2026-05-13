@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sentinel-scan.sh — drift detection for your-domain.example
+# sentinel-scan.sh — drift detection for ellis-aegis.us
 # Compares current Cloudflare state against Codex ledger + baseline.
 # Anything not authored by Codex is flagged as unauthorized.
 set -euo pipefail
@@ -187,7 +187,7 @@ DRIFT_FOUND=0
     echo "- entries: $CHANGES"
     echo "$AUDIT" | jq -r '.result[]? | "  - [\(.when)] \(.actor.email // "system") :: \(.action.type) :: \(.resource.type)"' || true
     # any actor that isn't the Codex automation token email is suspicious
-    OTHER=$(echo "$AUDIT" | jq -r '[.result[]? | select(.actor.email != "'"${CODEX_ACTOR_EMAIL:-codex@your-domain.example}"'")] | length')
+    OTHER=$(echo "$AUDIT" | jq -r '[.result[]? | select(.actor.email != "'"${CODEX_ACTOR_EMAIL:-codex@ellis-aegis.us}"'")] | length')
     if [[ "$OTHER" -gt 0 ]]; then
       echo "- 🚨 $OTHER changes by non-Codex actors"
       DRIFT_FOUND=1

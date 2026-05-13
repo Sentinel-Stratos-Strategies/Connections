@@ -1,0 +1,35 @@
+{
+  "lane": "mj-gadget",
+  "platform": "gadget",
+  "purpose": "Coordinate approved Gadget app and backend builder workflows, including app metadata, environment-aware operations, and implementation planning.",
+  "owner": "Sentinel",
+  "authMode": "api_key",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "app.read",
+    "model.read",
+    "api.read",
+    "deployment.read",
+    "implementation.plan"
+  ],
+  "deniedActions": [
+    "app.delete",
+    "permission.escalate",
+    "secret.read",
+    "production_data.dump_all"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "production_deploy",
+    "schema.update",
+    "api.write",
+    "data.bulk_mutation"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_app_scope_only",
+    "externalWrite": "approval_required_for_mutations",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

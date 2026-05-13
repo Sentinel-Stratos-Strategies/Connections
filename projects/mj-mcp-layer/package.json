@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "Workspace utilities for MJ MCP Layer automation scripts.",
+  "scripts": {
+    "build": "npm --prefix platform run build",
+    "check": "npm --prefix mcp-layer run typecheck && npm --prefix platform run typecheck",
+    "test": "npm --prefix mcp-layer test && npm --prefix platform test"
+  },
   "dependencies": {
     "yaml": "^2.8.4"
   }

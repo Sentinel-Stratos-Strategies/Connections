@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ellis-aegis.us/schemas/mj-mcp/memory-projection.schema.json",
+  "title": "MJ MCP Memory Projection",
+  "type": "object",
+  "required": ["projectionId", "createdAt", "lane", "source", "resource", "summary", "sourceHash"],
+  "additionalProperties": false,
+  "properties": {
+    "projectionId": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "lane": { "type": "string" },
+    "source": { "type": "string" },
+    "resource": { "type": "string" },
+    "summary": { "type": "string" },
+    "sourceHash": { "type": "string" },
+    "projectionHash": { "type": "string" },
+    "links": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "metadata": { "type": "object" }
+  }
+}

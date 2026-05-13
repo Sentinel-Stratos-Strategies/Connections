@@ -42,12 +42,29 @@ const WATCHER_KINDS: WatcherKind[] = ["edge-abuse", "drift", "origin-health", "d
 
 const POLICY: PolicyConfig = {
   deny_by_default: true,
-  allowed_paths: ["/mcp", "/turn/*", "/audit/*", "/healthz"],
+  allowed_paths: [
+    "/mcp",
+    "/turn/*",
+    "/audit/*",
+    "/api/assets",
+    "/api/events",
+    "/api/incidents",
+    "/api/checks/run",
+    "/api/change-request",
+    "/api/ledger",
+    "/healthz",
+  ],
   required_headers: ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
   method_matrix: {
     "/mcp": ["GET", "POST", "OPTIONS"],
     "/turn/*": ["POST", "OPTIONS"],
     "/audit/*": ["GET", "OPTIONS"],
+    "/api/assets": ["GET", "OPTIONS"],
+    "/api/events": ["GET", "OPTIONS"],
+    "/api/incidents": ["GET", "OPTIONS"],
+    "/api/checks/run": ["POST", "OPTIONS"],
+    "/api/change-request": ["GET", "POST", "OPTIONS"],
+    "/api/ledger": ["GET", "OPTIONS"],
     "/healthz": ["GET"],
   },
   capability_matrix: {
@@ -59,6 +76,25 @@ const POLICY: PolicyConfig = {
       POST: ["script.run", "mcp.admin"],
     },
     "/audit/*": {
+      GET: ["forensic.read", "mcp.admin"],
+    },
+    "/api/assets": {
+      GET: ["forensic.read", "mcp.admin"],
+    },
+    "/api/events": {
+      GET: ["forensic.read", "mcp.admin"],
+    },
+    "/api/incidents": {
+      GET: ["forensic.read", "mcp.admin"],
+    },
+    "/api/checks/run": {
+      POST: ["cloud.ops", "mcp.admin", "security.status"],
+    },
+    "/api/change-request": {
+      GET: ["forensic.read", "mcp.admin"],
+      POST: ["cloud.ops", "mcp.admin"],
+    },
+    "/api/ledger": {
       GET: ["forensic.read", "mcp.admin"],
     },
   },
@@ -147,26 +183,40 @@ export default {
     }
 
     if (path === "/api/assets" && request.method === "GET") {
+      const policyCheck = enforceMcpPolicy(request, "GET", "/api/assets");
+      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleProtectedList(request, env, "assets");
     }
     if (path === "/api/events" && request.method === "GET") {
+      const policyCheck = enforceMcpPolicy(request, "GET", "/api/events");
+      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleProtectedList(request, env, "events");
     }
     if (path === "/api/incidents" && request.method === "GET") {
+      const policyCheck = enforceMcpPolicy(request, "GET", "/api/incidents");
+      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleProtectedList(request, env, "incidents");
     }
     if (path === "/api/checks/run" && request.method === "POST") {
+      const policyCheck = enforceMcpPolicy(request, "POST", "/api/checks/run");
+      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleProtectedCheckRun(request, env, ctx);
     }
 
     if (path === "/api/change-request" && request.method === "POST") {
+      const policyCheck = enforceMcpPolicy(request, "POST", "/api/change-request");
+      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleChangeRequest(request, env, ctx);
     }
     if (path === "/api/change-request" && request.method === "GET") {
+      const policyCheck = enforceMcpPolicy(request, "GET", "/api/change-request");
+      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleChangeRequestList(request, env);
     }
 
     if (path === "/api/ledger" && request.method === "GET") {
+      const policyCheck = enforceMcpPolicy(request, "GET", "/api/ledger");
+      if (policyCheck) return json(policyCheck, { env, request, status: 403 });
       return handleLedgerList(request, env);
     }
 
@@ -342,7 +392,7 @@ async function handleAudit(request: Request, env: Env, ctx: ExecutionContext, pa
   const url = new URL(request.url);
   const since = url.searchParams.get("since");
   const category = url.searchParams.get("category");
-  const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 200);
+  const limit = parseBoundedLimit(url.searchParams.get("limit"));
 
   ctx.waitUntil(logEvent(env, {
     actor: auth.actor,
@@ -439,7 +489,7 @@ async function handleChangeRequestList(request: Request, env: Env): Promise<Resp
 
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
-  const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 200);
+  const limit = parseBoundedLimit(url.searchParams.get("limit"));
 
   let query = "SELECT * FROM change_requests";
   const params: string[] = [];
@@ -468,7 +518,7 @@ async function handleLedgerList(request: Request, env: Env): Promise<Response> {
   const since = url.searchParams.get("since");
   const intent = url.searchParams.get("intent");
   const provider = url.searchParams.get("provider");
-  const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 200);
+  const limit = parseBoundedLimit(url.searchParams.get("limit"));
 
   let query = "SELECT * FROM ledger";
   const conditions: string[] = [];
@@ -595,6 +645,12 @@ function hasAnyCapability(provided: string[], allowed: string[]): boolean {
   return provided.some((capability) => allowed.includes(capability));
 }
 
+function parseBoundedLimit(value: string | null, fallback = 50, max = 200): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+}
+
 function buildAuditMetadata(request: Request, extra: JsonRecord): JsonRecord {
   const url = new URL(request.url);
   return {
@@ -640,7 +696,8 @@ async function authenticate(
 ): Promise<{ actor: string; error?: string; ok: boolean }> {
   const operatorToken = env.OPERATOR_TOKEN?.trim();
   if (!operatorToken) {
-    return { actor: "anonymous", error: "operator_token_not_configured", ok: false };
+    console.error("operator-token-not-configured");
+    return { actor: "anonymous", error: "unauthorized", ok: false };
   }
 
   const headerName = (env.OPERATOR_HEADER ?? "x-ellis-aegis-token").toLowerCase();

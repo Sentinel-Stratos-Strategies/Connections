@@ -1,0 +1,79 @@
+{
+  "$schema": "../schemas/infrastructure-connections.schema.json",
+  "version": 1,
+  "authority": {
+    "account": "5b94eedaff8fb3ccaa1b607f57963e10",
+    "zone": "ellis-aegis.us",
+    "worker": "mj-edge",
+    "entrypoints": [
+      "https://mj.ellis-aegis.us",
+      "https://mcp.ellis-aegis.us",
+      "https://codex.ellis-aegis.us"
+    ]
+  },
+  "lanes": [
+    {
+      "lane": "mj-codex",
+      "status": "ready_for_operator_token",
+      "entrypoint": "https://codex.ellis-aegis.us/mcp",
+      "requiredSecrets": ["OPERATOR_TOKEN"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["mcp.admin", "script.run", "cloud.ops", "forensic.read"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-github",
+      "status": "ready_for_app_or_oidc",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["GITHUB_TOKEN or GitHub App credentials"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["repo.read", "pr.comment", "workflow.dispatch"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-cloudflare",
+      "status": "ready_for_api_token",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["CF_API_TOKEN", "CF_ACCOUNT_ID", "CF_ZONE_ID_ELLIS", "CF_ZONE_ID_HITCH", "CF_ZONE_ID_KEVIS"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["cloud.ops", "security.status", "forensic.read"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-openai",
+      "status": "ready_for_connector_scope",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["OPENAI_API_KEY or approved OpenAI connector"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["model.route", "tool.call_approved"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-google",
+      "status": "ready_for_oauth_or_service_account",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["GOOGLE_SERVICE_ACCOUNT_JSON or approved OAuth connector"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["drive.read_approved", "workspace.action_approved"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-notion",
+      "status": "ready_for_connector_scope",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["NOTION_TOKEN or approved Notion connector"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["doc.read", "doc.update_approved"],
+      "auditMode": "required"
+    },
+    {
+      "lane": "mj-linear",
+      "status": "ready_for_connector_scope",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "requiredSecrets": ["LINEAR_API_KEY or approved Linear connector"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["issue.read", "issue.update_approved"],
+      "auditMode": "required"
+    }
+  ]
+}

@@ -37,27 +37,11 @@ export class KubernetesAdapter implements ProviderAdapter {
   }
 
   async applyPolicy(policy: SecurityPolicy): Promise<ChangeRequest> {
-    return {
-      id: crypto.randomUUID(),
-      name: policy.name,
-      targetProviders: ["kubernetes"],
-      policy,
-      requester: "automation",
-      status: "executed",
-      createdAt: new Date().toISOString(),
-    };
+    throw new Error("kubernetes_apply_not_implemented");
   }
 
   async revertPolicy(version: string): Promise<ChangeRequest> {
-    return {
-      id: crypto.randomUUID(),
-      name: `revert-to-${version}`,
-      targetProviders: ["kubernetes"],
-      policy: {} as SecurityPolicy,
-      requester: "automation",
-      status: "executed",
-      createdAt: new Date().toISOString(),
-    };
+    throw new Error(`kubernetes_revert_not_implemented:${version}`);
   }
 
   async validatePolicy(policy: SecurityPolicy): Promise<{ ok: boolean; errors: string[] }> {
@@ -75,14 +59,18 @@ export class KubernetesAdapter implements ProviderAdapter {
   async healthCheck(): Promise<HealthStatus> {
     const start = Date.now();
     return {
-      ok: true,
+      ok: false,
       latency: Date.now() - start,
-      details: { cluster: this.config.cluster, note: "Stub — implement cluster API health check" },
+      details: { cluster: this.config.cluster, error: "kubernetes_not_configured", note: "Implement cluster API validation before enabling Kubernetes mutations" },
     };
   }
 
   async validateAccess(): Promise<AccessValidation> {
-    return { ok: true, permissions: ["stub"] };
+    return {
+      ok: false,
+      permissions: [],
+      errors: ["kubernetes_not_configured"],
+    };
   }
 
   async getAuditLog(_since: Date): Promise<LedgerEntry[]> {

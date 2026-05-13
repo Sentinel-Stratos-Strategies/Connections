@@ -3,7 +3,7 @@ tenant_id: hitch
 display_name: Hitch
 domains:
   - hitch.guru
-  - hitch.your-domain.example
+  - hitch.ellis-aegis.us
 capabilities:
   - script.run
   - forensic.read

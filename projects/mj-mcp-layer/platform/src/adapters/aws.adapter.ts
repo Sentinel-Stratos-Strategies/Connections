@@ -36,27 +36,11 @@ export class AWSAdapter implements ProviderAdapter {
   }
 
   async applyPolicy(policy: SecurityPolicy): Promise<ChangeRequest> {
-    return {
-      id: crypto.randomUUID(),
-      name: policy.name,
-      targetProviders: ["aws"],
-      policy,
-      requester: "automation",
-      status: "executed",
-      createdAt: new Date().toISOString(),
-    };
+    throw new Error("aws_apply_not_implemented");
   }
 
   async revertPolicy(version: string): Promise<ChangeRequest> {
-    return {
-      id: crypto.randomUUID(),
-      name: `revert-to-${version}`,
-      targetProviders: ["aws"],
-      policy: {} as SecurityPolicy,
-      requester: "automation",
-      status: "executed",
-      createdAt: new Date().toISOString(),
-    };
+    throw new Error(`aws_revert_not_implemented:${version}`);
   }
 
   async validatePolicy(policy: SecurityPolicy): Promise<{ ok: boolean; errors: string[] }> {
@@ -74,14 +58,18 @@ export class AWSAdapter implements ProviderAdapter {
   async healthCheck(): Promise<HealthStatus> {
     const start = Date.now();
     return {
-      ok: true,
+      ok: false,
       latency: Date.now() - start,
-      details: { region: this.config.region, note: "Stub — implement STS GetCallerIdentity check" },
+      details: { region: this.config.region, error: "aws_not_configured", note: "Implement STS GetCallerIdentity before enabling AWS mutations" },
     };
   }
 
   async validateAccess(): Promise<AccessValidation> {
-    return { ok: true, permissions: ["stub"] };
+    return {
+      ok: false,
+      permissions: [],
+      errors: ["aws_not_configured"],
+    };
   }
 
   async getAuditLog(_since: Date): Promise<LedgerEntry[]> {

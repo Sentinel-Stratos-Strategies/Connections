@@ -6,11 +6,15 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "manifest:deployment": "node scripts/write-deployment-manifest.mjs",
+    "smoke": "node scripts/smoke-control-plane.mjs",
     "tail": "wrangler tail",
+    "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260101.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "wrangler": "^4.76.0"
   }

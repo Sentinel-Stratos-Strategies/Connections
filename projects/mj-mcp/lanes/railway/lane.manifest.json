@@ -1,0 +1,38 @@
+{
+  "lane": "mj-railway",
+  "platform": "railway",
+  "purpose": "Manage approved backend service metadata, environments, preview deploys, logs, and production deployment gates.",
+  "owner": "Sentinel",
+  "authMode": "api_key",
+  "memoryMode": "deployment_projection",
+  "allowedActions": [
+    "project.read",
+    "service.read",
+    "environment.read",
+    "deployment.read",
+    "deployment.logs_read",
+    "deployment.create_preview",
+    "variable.read_metadata"
+  ],
+  "deniedActions": [
+    "project.delete",
+    "service.delete",
+    "variable.read_secret_values",
+    "permission.escalate",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "deployment.promote_production",
+    "variable.update",
+    "service.settings_update",
+    "environment.delete"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_project_scope_only",
+    "externalWrite": "preview_deploys_allowed_production_requires_approval",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

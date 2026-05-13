@@ -1,4 +1,4 @@
-# Authorized Cloudflare API tokens — what *should* exist for your-domain.example.
+# Authorized Cloudflare API tokens — what *should* exist for ellis-aegis.us.
 # Sentinel scan compares this to the live token list. Anything else is flagged.
 version: 1
 last_updated: 2026-04-30

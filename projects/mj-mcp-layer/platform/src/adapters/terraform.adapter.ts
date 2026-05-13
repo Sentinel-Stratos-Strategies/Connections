@@ -40,27 +40,11 @@ export class TerraformAdapter implements ProviderAdapter {
 
   async applyPolicy(policy: SecurityPolicy): Promise<ChangeRequest> {
     const _tfCode = this.translator.translate(policy, "cloudflare", "terraform");
-    return {
-      id: crypto.randomUUID(),
-      name: policy.name,
-      targetProviders: ["terraform"],
-      policy,
-      requester: "automation",
-      status: "executed",
-      createdAt: new Date().toISOString(),
-    };
+    throw new Error("terraform_apply_not_implemented");
   }
 
   async revertPolicy(version: string): Promise<ChangeRequest> {
-    return {
-      id: crypto.randomUUID(),
-      name: `revert-to-${version}`,
-      targetProviders: ["terraform"],
-      policy: {} as SecurityPolicy,
-      requester: "automation",
-      status: "executed",
-      createdAt: new Date().toISOString(),
-    };
+    throw new Error(`terraform_revert_not_implemented:${version}`);
   }
 
   async validatePolicy(policy: SecurityPolicy): Promise<{ ok: boolean; errors: string[] }> {
@@ -78,17 +62,22 @@ export class TerraformAdapter implements ProviderAdapter {
   async healthCheck(): Promise<HealthStatus> {
     const start = Date.now();
     return {
-      ok: true,
+      ok: false,
       latency: Date.now() - start,
       details: {
         workingDir: this.config.workingDir,
-        note: "Stub — implement terraform validate check",
+        error: "terraform_not_configured",
+        note: "Implement terraform validate/plan checks before enabling Terraform mutations",
       },
     };
   }
 
   async validateAccess(): Promise<AccessValidation> {
-    return { ok: true, permissions: ["stub"] };
+    return {
+      ok: false,
+      permissions: [],
+      errors: ["terraform_not_configured"],
+    };
   }
 
   async getAuditLog(_since: Date): Promise<LedgerEntry[]> {

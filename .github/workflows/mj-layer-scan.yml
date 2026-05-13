@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - zone_name: your-domain.example
+          - zone_name: ellis-aegis.us
             zone_id_secret: CF_ZONE_ID_ELLIS
           - zone_name: hitch.guru
             zone_id_secret: CF_ZONE_ID_HITCH

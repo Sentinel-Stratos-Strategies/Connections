@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "ellis-aegis-control-plane",
+  "name": "mj-edge",
   "main": "src/index.ts",
   "compatibility_date": "2026-03-29",
   "preview_urls": false,
@@ -9,11 +9,11 @@
     "enabled": true
   },
   "vars": {
-    "APP_NAME": "ellis-aegis-control-plane",
+    "APP_NAME": "mj-edge",
     "APP_ENV": "production",
-    "ZONE_NAME": "your-domain.example",
-    "PUBLIC_BASE_URL": "https://api.your-domain.example",
-    "ALLOWED_ORIGINS": "https://admin.your-domain.example,https://vault.your-domain.example",
+    "ZONE_NAME": "ellis-aegis.us",
+    "PUBLIC_BASE_URL": "https://mcp.ellis-aegis.us",
+    "ALLOWED_ORIGINS": "https://mj.ellis-aegis.us,https://mcp.ellis-aegis.us,https://codex.ellis-aegis.us",
     "OPERATOR_HEADER": "x-ellis-aegis-token"
   },
   "triggers": {
@@ -55,18 +55,25 @@
     ]
   },
 
-  // Uncomment as resources come online.
-  // "routes": [
-  //   {
-  //     "pattern": "api.your-domain.example/*",
-  //     "zone_name": "your-domain.example"
-  //   }
-  // ],
+  "routes": [
+    {
+      "pattern": "mj.ellis-aegis.us/*",
+      "zone_name": "ellis-aegis.us"
+    },
+    {
+      "pattern": "mcp.ellis-aegis.us/*",
+      "zone_name": "ellis-aegis.us"
+    },
+    {
+      "pattern": "codex.ellis-aegis.us/*",
+      "zone_name": "ellis-aegis.us"
+    }
+  ],
   // Uncomment after Email Routing is enabled and your destination address is verified.
   // "send_email": [
   //   {
   //     "name": "ALERT_EMAIL",
-  //     "destination_address": "operator@example.com"
+  //     "destination_address": "operator@ellis-aegis.us"
   //   }
   // ]
 }

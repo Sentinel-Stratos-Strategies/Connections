@@ -82,7 +82,11 @@ Orchestrated security scripts:
 ```bash
 cd mcp-layer
 npm install
+npx wrangler d1 execute ellis-aegis-control-plane --remote --file=./migrations/0001_init.sql
+npx wrangler deploy --dry-run
 npx wrangler deploy
+OPERATOR_TOKEN="$OPERATOR_TOKEN" npm run smoke -- --base-url https://mcp.ellis-aegis.us
+npm run manifest:deployment
 ```
 
 ### Run Hardening
@@ -110,7 +114,7 @@ npx tsx src/cli/index.ts policy-apply --file manifests/unified-security-v1.yaml 
 
 ```bash
 # Health check
-curl https://your-worker.workers.dev/healthz
+curl https://mcp.ellis-aegis.us/healthz
 
 # MCP capabilities (requires auth headers)
 curl -H "x-tenant-id: kevis" \
@@ -118,7 +122,7 @@ curl -H "x-tenant-id: kevis" \
      -H "x-policy-version: v2" \
      -H "x-operator-capability: mcp.admin" \
      -H "x-ellis-aegis-token: YOUR_TOKEN" \
-     https://your-worker.workers.dev/mcp
+     https://mcp.ellis-aegis.us/mcp
 
 # Audit events
 curl -H "x-tenant-id: kevis" \
@@ -126,14 +130,14 @@ curl -H "x-tenant-id: kevis" \
      -H "x-policy-version: v2" \
      -H "x-operator-capability: forensic.read" \
      -H "x-ellis-aegis-token: YOUR_TOKEN" \
-     "https://your-worker.workers.dev/audit/events?since=2026-05-01&limit=50"
+     "https://mcp.ellis-aegis.us/audit/events?since=2026-05-01&limit=50"
 ```
 
 ## CI/CD
 
 ### Automated Workflows
 
-- **`mj-layer-deploy.yml`** — Triggered on push to MJ_Layer; runs hardening + sentinel scan per zone
+- **`mj-layer-deploy.yml`** — Validates on push to MJ_Layer; deploys only through manual dispatch, then runs smoke and writes a deployment manifest
 - **`mj-layer-scan.yml`** — Scheduled every 6 hours; drift detection across all zones
 
 ### Required GitHub Secrets
@@ -145,6 +149,7 @@ curl -H "x-tenant-id: kevis" \
 | `CF_ZONE_ID_HITCH` | Zone ID for hitch.guru |
 | `CF_ZONE_ID_KEVIS` | Zone ID for kevis.online |
 | `CF_ACCOUNT_ID` | Cloudflare account ID (for audit log access) |
+| `OPERATOR_TOKEN` | Runtime operator token for protected smoke checks |
 
 ## Security Model
 

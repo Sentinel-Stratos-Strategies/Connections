@@ -5,7 +5,7 @@ targetProviders: ["cloudflare", "aws", "kubernetes"]
 zones:
   - name: "primary"
     cloudflare:
-      domains: ["your-domain.example"]
+      domains: ["ellis-aegis.us"]
     aws:
       regions: ["us-east-1", "us-west-2"]
       vpcIds: []

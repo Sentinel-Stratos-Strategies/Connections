@@ -2,20 +2,135 @@ name: MJ Layer Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      run_hardening:
+        description: "Run Cloudflare hardening after deploy and smoke pass"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
   push:
     branches: ["MJ_Layer"]
     paths:
       - "projects/mj-mcp-layer/**"
+      - "projects/mj-mcp/**"
       - ".github/workflows/mj-layer-deploy.yml"
 
+permissions:
+  contents: read
+
 jobs:
+  validate-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install workspace utilities
+        run: npm ci --prefix projects/mj-mcp-layer --ignore-scripts --no-audit --no-fund
+
+      - name: Install Worker dependencies
+        run: npm ci --prefix projects/mj-mcp-layer/mcp-layer --ignore-scripts --no-audit --no-fund
+
+      - name: Install platform dependencies
+        run: npm ci --prefix projects/mj-mcp-layer/platform --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck and test Worker
+        run: |
+          npm --prefix projects/mj-mcp-layer/mcp-layer run typecheck
+          npm --prefix projects/mj-mcp-layer/mcp-layer test
+
+      - name: Typecheck, test, and build platform
+        run: |
+          npm --prefix projects/mj-mcp-layer/platform run typecheck
+          npm --prefix projects/mj-mcp-layer/platform test
+          npm --prefix projects/mj-mcp-layer/platform run build
+
+      - name: Validate Cloudflare scripts
+        run: bash -n projects/mj-mcp-layer/cloudflare/*.sh
+
+      - name: Validate mini-lane manifests
+        run: |
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const files = [
+            ...fs.readdirSync("projects/mj-mcp/lanes", { withFileTypes: true })
+              .filter((entry) => entry.isDirectory())
+              .map((entry) => `projects/mj-mcp/lanes/${entry.name}/lane.manifest.json`),
+            "projects/mj-mcp/connections/infrastructure-connections.json",
+          ];
+          for (const file of files) JSON.parse(fs.readFileSync(file, "utf8"));
+          console.log(`validated ${files.length} mini-lane manifest files`);
+          NODE
+
+      - name: Dry-run Worker bundle
+        run: npx wrangler deploy --dry-run
+        working-directory: projects/mj-mcp-layer/mcp-layer
+
+  deploy-worker:
+    runs-on: ubuntu-latest
+    needs: validate-build
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Worker dependencies
+        run: npm ci --prefix projects/mj-mcp-layer/mcp-layer --ignore-scripts --no-audit --no-fund
+
+      - name: Apply D1 migration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: npx wrangler d1 execute ellis-aegis-control-plane --remote --file=./migrations/0001_init.sql
+        working-directory: projects/mj-mcp-layer/mcp-layer
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: npx wrangler deploy
+        working-directory: projects/mj-mcp-layer/mcp-layer
+
+      - name: Smoke test deployed Worker
+        env:
+          MCP_SMOKE_BASE_URL: ${{ secrets.MCP_SMOKE_BASE_URL || 'https://mcp.ellis-aegis.us' }}
+          OPERATOR_TOKEN: ${{ secrets.OPERATOR_TOKEN }}
+        run: npm run smoke
+        working-directory: projects/mj-mcp-layer/mcp-layer
+
+      - name: Write deployment manifest
+        run: npm run manifest:deployment
+        working-directory: projects/mj-mcp-layer/mcp-layer
+
+      - name: Upload deployment manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mj-layer-deployment-manifest
+          path: |
+            projects/mj-mcp-layer/artifacts/mj-mcp-layer/deployment-manifest.json
+            projects/mj-mcp-layer/artifacts/mj-mcp-layer/smoke-results.json
+
   harden-and-scan:
     runs-on: ubuntu-latest
+    needs: deploy-worker
+    if: github.event_name == 'workflow_dispatch' && inputs.run_hardening == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - zone_name: your-domain.example
+          - zone_name: ellis-aegis.us
             zone_id_secret: CF_ZONE_ID_ELLIS
           - zone_name: hitch.guru
             zone_id_secret: CF_ZONE_ID_HITCH
@@ -43,21 +158,12 @@ jobs:
           key='${{ matrix.zone_id_secret }}'
           val="$(printenv "$key" || true)"
           if [ -z "$val" ]; then
-            echo "Missing secret $key — skipping zone"
+            echo "Missing secret $key - skipping zone"
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "zone_id=$val" >> "$GITHUB_OUTPUT"
           echo "skip=false" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare env
-        if: steps.zone.outputs.skip != 'true'
-        run: |
-          cd projects/mj-mcp-layer
-          cat > .env <<EOT
-CF_ZONE_ID=${{ steps.zone.outputs.zone_id }}
-CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}
-EOT
 
       - name: Preflight
         if: steps.zone.outputs.skip != 'true'
@@ -87,39 +193,9 @@ EOT
           cd projects/mj-mcp-layer
           bash cloudflare/sentinel-scan.sh
 
-      - name: Upload artifacts
+      - name: Upload hardening artifacts
         if: always() && steps.zone.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: mj-layer-${{ matrix.zone_name }}
+          name: mj-layer-hardening-${{ matrix.zone_name }}
           path: projects/mj-mcp-layer/artifacts/**
-
-  health-check:
-    runs-on: ubuntu-latest
-    needs: harden-and-scan
-    if: always()
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install automation dependencies
-        run: npm ci --prefix projects/mj-mcp-layer --ignore-scripts --no-audit --no-fund
-
-      - name: Run health checks
-        env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID_ELLIS }}
-        run: |
-          cd projects/mj-mcp-layer
-          bash cloudflare/20-health-check.sh
-
-      - name: Upload health results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: health-check-results
-          path: projects/mj-mcp-layer/artifacts/health-*.json
