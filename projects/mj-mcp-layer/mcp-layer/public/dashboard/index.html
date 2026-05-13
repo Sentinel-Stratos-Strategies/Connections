@@ -4,17 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>MJ Edge — Genesis OS</title>
-<!-- CP-3: Self-hosted fonts + pinned Lucide (no fonts.googleapis.com / unpkg @latest). See vendor/README.md -->
-<style id="mj-edge-fonts">
-@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('./vendor/fonts/inter-latin-400-normal.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('./vendor/fonts/inter-latin-600-normal.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('./vendor/fonts/inter-latin-700-normal.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-style:normal;font-weight:800;font-display:swap;src:url('./vendor/fonts/inter-latin-800-normal.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-style:normal;font-weight:900;font-display:swap;src:url('./vendor/fonts/inter-latin-900-normal.woff2') format('woff2')}
-@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:400;font-display:swap;src:url('./vendor/fonts/space-grotesk-latin-400-normal.woff2') format('woff2')}
-@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:600;font-display:swap;src:url('./vendor/fonts/space-grotesk-latin-600-normal.woff2') format('woff2')}
-@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:700;font-display:swap;src:url('./vendor/fonts/space-grotesk-latin-700-normal.woff2') format('woff2')}
-</style>
+<!-- CP-3: Self-hosted fonts + pinned Lucide. See vendor/README.md -->
+<link rel="stylesheet" href="./vendor/fonts.css" />
 <script src="./vendor/lucide-0.468.0.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -550,6 +541,7 @@ tr:hover td{background:rgba(58,134,255,.06)}
 
 <div id="toast" role="status" aria-live="polite"></div>
 
+<script src="vendor/lucide.min.js" integrity="sha384-hJnF5AwidE18GSWTAGHv3ByzzvfNZ1Tcx5y1UUV3WkauuMCEzBJBMSwSt/PUPXnM" crossorigin="anonymous"></script>
 <script>
 lucide.createIcons();
 

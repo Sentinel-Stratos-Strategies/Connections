@@ -17,7 +17,7 @@ Numbered roadmap (**CP-1 … CP-10**), statuses, and commit convention: **[CHECK
 
 - **Static prototype** for behavior: Admin / Customer tabs, command palette, demo metrics, client-side toasts.
 - **Served in prod** at `GET /dashboard` on the Worker (static bundle); interactive actions are still **not** backed by APIs except what you add in later checkpoints.
-- **CP-3:** Lucide `0.468.0` + Inter / Space Grotesk `5.0.16` woff2 are **vendored** under `dashboard/vendor/` (no runtime CDN). Lucide script uses **SRI**. See `vendor/README.md`.
+- **CP-3:** Lucide **0.468.0** + variable Inter / Space Grotesk (**@fontsource-variable 5.1.1**) under `dashboard/vendor/` (no runtime CDN). Lucide uses **SRI**. See `vendor/fonts.css` and `vendor/README.md`.
 
 ## Local preview
 
