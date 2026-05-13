@@ -12,7 +12,13 @@ on:
           - "false"
           - "true"
   push:
-    branches: ["MJ_Layer"]
+    branches: ["MJ_Layer", "cursor/mj-layer-enterprise-ready-1c9b"]
+    paths:
+      - "projects/mj-mcp-layer/**"
+      - "projects/mj-mcp/**"
+      - ".github/workflows/mj-layer-deploy.yml"
+  pull_request:
+    branches: ["MJ_Layer", "main"]
     paths:
       - "projects/mj-mcp-layer/**"
       - "projects/mj-mcp/**"
@@ -41,16 +47,8 @@ jobs:
       - name: Install platform dependencies
         run: npm ci --prefix projects/mj-mcp-layer/platform --ignore-scripts --no-audit --no-fund
 
-      - name: Typecheck and test Worker
-        run: |
-          npm --prefix projects/mj-mcp-layer/mcp-layer run typecheck
-          npm --prefix projects/mj-mcp-layer/mcp-layer test
-
-      - name: Typecheck, test, and build platform
-        run: |
-          npm --prefix projects/mj-mcp-layer/platform run typecheck
-          npm --prefix projects/mj-mcp-layer/platform test
-          npm --prefix projects/mj-mcp-layer/platform run build
+      - name: Run MJ golden path
+        run: npm --prefix projects/mj-mcp-layer run mj:golden
 
       - name: Validate Cloudflare scripts
         run: bash -n projects/mj-mcp-layer/cloudflare/*.sh
@@ -182,6 +180,11 @@ jobs:
         run: |
           cd projects/mj-mcp-layer
           bash cloudflare/99-run-cloudflare-hardening.sh
+          if [ -f artifacts/stage-failures.log ]; then
+            echo "Hardening stage failures detected"
+            cat artifacts/stage-failures.log
+            exit 1
+          fi
 
       - name: Scan
         if: steps.zone.outputs.skip != 'true'
