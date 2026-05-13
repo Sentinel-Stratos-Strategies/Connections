@@ -25,7 +25,7 @@ import { RollbackEngine } from "../core/rollback-engine.js";
 import { RuntimeVerifier } from "../core/runtime-verifier.js";
 import { DigitalTwin } from "../core/digital-twin.js";
 import { DriftClassifier } from "../automation/drift-classifier.js";
-import { ComplianceAutopilot } from "../automation/compliance-autopilot.js";
+import { ComplianceAutopilot, type ComplianceFramework } from "../automation/compliance-autopilot.js";
 import { MutationBudgetEngine } from "../core/mutation-budget.js";
 import { VisaEngine } from "../core/capability-visa.js";
 import { ReputationEngine } from "../core/reputation-engine.js";
@@ -106,6 +106,7 @@ OPTIONS:
   --tenant <name>     Tenant ID for intent compilation
   --endpoint <url>    Target endpoint for mutation tests
   --risk <level>      Risk tolerance: low, medium, high
+  --framework <name>  Compliance framework (soc2, pci, hipaa, iso27001) [default: soc2]
 
 EXAMPLES:
   mcp-cli health-check --all-providers
@@ -124,7 +125,7 @@ EXAMPLES:
   mcp-cli visa --name cursor --intent "add_dns_record" --tenant kevis.online
   mcp-cli reputation
   mcp-cli court --intent "protect /mcp from unauthenticated bursts" --tenant kevis
-  mcp-cli compliance-report --format json --from 2026-01-01 --to 2026-06-01
+  mcp-cli compliance-report --framework pci --format json --from 2026-01-01 --to 2026-06-01
   mcp-cli auto-remediate --provider cloudflare
   mcp-cli ledger-view --since "2026-05-01"
 `;
@@ -150,6 +151,7 @@ async function main(): Promise<void> {
       tenant: { type: "string" },
       endpoint: { type: "string" },
       risk: { type: "string" },
+      framework: { type: "string", default: "soc2" },
     },
   });
 
@@ -251,7 +253,7 @@ async function main(): Promise<void> {
       await handleCourt(adapters, ledger, values.intent, values.tenant, values.risk, values.format ?? "text");
       break;
     case "compliance-report":
-      handleComplianceReport(values.from, values.to, values.format ?? "text");
+      handleComplianceReport(values.from, values.to, values.format ?? "text", values.framework);
       break;
     case "change-request":
       await handleChangeRequestSubmit(orchestrator, ledger, adapters, values.file, values.name);
@@ -764,12 +766,14 @@ function handleComplianceReport(
   periodStart?: string,
   periodEnd?: string,
   format?: string,
+  frameworkValue?: string,
 ): void {
   const start = periodStart ?? new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
   const end = periodEnd ?? new Date().toISOString().slice(0, 10);
+  const framework = parseComplianceFramework(frameworkValue);
 
   const autopilot = new ComplianceAutopilot(resolve("manifests/compliance"));
-  const report = autopilot.generateReport("soc2", [], start, end, {
+  const report = autopilot.generateReport(framework, [], start, end, {
     driftScanCount: 0,
     visaCount: 0,
     budgetCheckCount: 0,
@@ -782,6 +786,15 @@ function handleComplianceReport(
   } else {
     console.log(autopilot.formatReport(report));
   }
+}
+
+function parseComplianceFramework(value?: string): ComplianceFramework {
+  const framework = (value ?? "soc2").toLowerCase();
+  if (framework === "soc2" || framework === "pci" || framework === "hipaa" || framework === "iso27001") {
+    return framework;
+  }
+  console.error(`Unsupported compliance framework: ${value}. Expected soc2, pci, hipaa, or iso27001.`);
+  process.exit(1);
 }
 
 async function handleVerify(

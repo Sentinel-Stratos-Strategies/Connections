@@ -155,7 +155,7 @@ export class RuntimeVerifier {
           if (!isMcpEvent(event)) return true;
           const meta = parseMetadata(event.metadata);
           if (meta.headers && typeof meta.headers === "object") {
-            return header in (meta.headers as Record<string, unknown>);
+            return hasNonEmptyHeader(meta.headers as Record<string, unknown>, header);
           }
           return false;
         },
@@ -400,6 +400,19 @@ function parseMetadata(metadata: string | Record<string, unknown>): Record<strin
   } catch {
     return {};
   }
+}
+
+function hasNonEmptyHeader(headers: Record<string, unknown>, header: string): boolean {
+  const lowerHeader = header.toLowerCase();
+  const match = Object.entries(headers).find(([key]) => key.toLowerCase() === lowerHeader);
+  if (!match) return false;
+
+  const value = match[1];
+  if (Array.isArray(value)) {
+    return value.some((entry) => typeof entry === "string" ? entry.trim().length > 0 : entry != null);
+  }
+  if (typeof value === "string") return value.trim().length > 0;
+  return value != null;
 }
 
 function summarizeEvent(event: AuditEvent): Record<string, unknown> {

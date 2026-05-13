@@ -1,6 +1,7 @@
 import type { ProviderAdapter } from "../adapters/provider.interface.js";
 import type { UniversalLedger } from "../core/ledger.js";
 import type {
+  ChangeRequest,
   DriftReport,
   LedgerEntry,
   ProviderName,
@@ -106,14 +107,30 @@ export class AutoRemediation {
     }
 
     try {
-      const result = await adapter.revertPolicy(plan.baselineVersion);
+      const results: ChangeRequest[] = [];
+      const failures: string[] = [];
+
+      for (const action of plan.actions) {
+        const rollbackTarget = this.toRollbackTarget(action);
+        try {
+          results.push(await adapter.revertPolicy(rollbackTarget));
+        } catch (error) {
+          failures.push(`${action.resource}: ${String(error)}`);
+        }
+      }
+
+      if (failures.length > 0) {
+        throw new Error(`Remediation failed for ${failures.length} action(s): ${failures.join("; ")}`);
+      }
+
+      const changeId = results.map((result) => result.id).join(",") || `remediation-${Date.now()}`;
 
       const entry: LedgerEntry = {
         ts: new Date().toISOString(),
         intent: "auto_remediation",
         provider: drift.provider,
-        hash: result.id,
-        changeId: result.id,
+        hash: changeId,
+        changeId,
         source: "automation",
         payload: {
           drift: {
@@ -123,6 +140,7 @@ export class AutoRemediation {
           plan: {
             actions: plan.actions.length,
             baselineVersion: plan.baselineVersion,
+            resources: plan.actions.map((action) => action.resource),
           },
         },
         result: "success",
@@ -133,7 +151,7 @@ export class AutoRemediation {
       if (issueNumber && this.github) {
         await this.closeIssueWithComment(
           issueNumber,
-          `Remediation executed successfully at ${new Date().toISOString()}.\n\nReverted to baseline: ${plan.baselineVersion}\nActions taken: ${plan.actions.length}`,
+          `Remediation executed successfully at ${new Date().toISOString()}.\n\nBaseline label: ${plan.baselineVersion}\nResources remediated: ${plan.actions.map((action) => action.resource).join(", ")}\nActions taken: ${plan.actions.length}`,
         );
       }
 
@@ -141,7 +159,7 @@ export class AutoRemediation {
         status: "remediated",
         provider: drift.provider,
         plan,
-        changeId: result.id,
+        changeId,
       };
     } catch (error) {
       const entry: LedgerEntry = {
@@ -182,6 +200,12 @@ export class AutoRemediation {
       driftCount: drift.unauthorizedChanges.length,
       actions,
     };
+  }
+
+  private toRollbackTarget(action: RemediationAction): string {
+    return action.resource.startsWith("rollback-")
+      ? action.resource
+      : `rollback-${action.resource}`;
   }
 
   private async notifyOperator(

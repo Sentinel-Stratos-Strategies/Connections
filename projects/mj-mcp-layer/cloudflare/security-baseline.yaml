@@ -39,6 +39,8 @@ allow_matrix:
       methods: ["POST", "OPTIONS"]
     - path_prefix: "/audit/"
       methods: ["GET", "OPTIONS"]
+    - path_prefix: "/api/"
+      methods: ["GET", "POST", "OPTIONS"]
     - path: "/healthz"
       methods: ["GET"]
 
@@ -52,8 +54,12 @@ waf_rules:
     expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and starts_with(http.request.uri.path, "/turn/") and not http.request.method in {"POST" "OPTIONS"})'
     action: block
 
+  - description: "MCP-fleet :: block disallowed methods on /api/*"
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and starts_with(http.request.uri.path, "/api/") and not http.request.method in {"GET" "POST" "OPTIONS"})'
+    action: block
+
   - description: "MCP-fleet :: block unknown paths"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and not (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or http.request.uri.path eq "/healthz"))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and not (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/") or http.request.uri.path eq "/healthz"))'
     action: block
 
   - description: "MCP-fleet :: require operator auth on /mcp + /turn/*"
@@ -79,7 +85,7 @@ rate_limits:
 # Cache rules (phase: http_request_cache_settings)
 cache_rules:
   - description: "MCP-fleet :: bypass cache on dynamic endpoints"
-    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/")))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/")))'
     cache: bypass
 
 # Bot management posture
