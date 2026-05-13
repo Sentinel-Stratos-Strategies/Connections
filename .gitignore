@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 .DS_Store
 projects/mj-mcp-layer/artifacts/
+.junie/
 __pycache__/
 *.py[codz]
 *$py.class
