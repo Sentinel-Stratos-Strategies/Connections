@@ -57,6 +57,16 @@ describe("review fixes", () => {
     assert.deepEqual(audit.controls_missing.sort(), ["CC6.1", "CC7.2"]);
   });
 
+  test("audit export includes ISO27001 controls", () => {
+    const engine = new EvidenceEngine("test-key", tmpdir());
+    const audit = engine.exportForAudit([
+      evidenceBundle(["inventory_before", "inventory_after", "policy_diff"]),
+    ], "iso27001");
+
+    assert.deepEqual(audit.controls_covered, ["A.8.9"]);
+    assert.deepEqual(audit.controls_missing, ["A.8.1"]);
+  });
+
   test("ESM loaders read compliance mappings and budget configs", () => {
     const root = mkdtempSync(join(tmpdir(), "mj-platform-review-"));
     const mappingsDir = join(root, "mappings");

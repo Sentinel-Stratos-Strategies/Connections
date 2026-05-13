@@ -142,6 +142,7 @@ export class VisaEngine {
     const visa = this.store.visas.find((v) => v.id === visaId);
     if (!visa) return false;
     visa.status = "revoked";
+    visa.signature = this.sign({ ...visa, signature: "" });
     this.saveStore();
     return true;
   }

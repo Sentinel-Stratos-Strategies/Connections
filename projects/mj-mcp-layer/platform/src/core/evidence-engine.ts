@@ -239,6 +239,7 @@ export class EvidenceEngine {
       soc2: ["CC6.1", "CC7.2", "CC8.1"],
       pci: ["6.5", "6.6", "10.1", "10.2"],
       hipaa: ["164.312(a)", "164.312(b)", "164.312(c)"],
+      iso27001: ["A.8.1", "A.8.9"],
     };
 
     const controls = controlMap[framework] ?? [];
@@ -331,6 +332,10 @@ const CONTROL_EVIDENCE_REQUIREMENTS: Record<string, Record<string, string[]>> = 
     "164.312(a)": ["operator_sign_off", "blast_radius_review"],
     "164.312(b)": ["ledger_entry"],
     "164.312(c)": ["policy_diff", "rollback_recipe_tested"],
+  },
+  iso27001: {
+    "A.8.1": ["operator_sign_off", "blast_radius_review"],
+    "A.8.9": ["inventory_before", "inventory_after", "policy_diff", "ledger_entry"],
   },
 };
 
