@@ -6,6 +6,8 @@
   "scripts": {
     "build": "npm --prefix platform run build",
     "check": "npm --prefix mcp-layer run typecheck && npm --prefix platform run typecheck",
+    "secrets:check": "node scripts/sync-secret-stores.mjs --dry-run",
+    "secrets:sync": "node scripts/sync-secret-stores.mjs --apply",
     "test": "npm --prefix mcp-layer test && npm --prefix platform test"
   },
   "dependencies": {
