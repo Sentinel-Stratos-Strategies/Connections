@@ -5,6 +5,9 @@
   "compatibility_date": "2026-03-29",
   "preview_urls": false,
   "workers_dev": true,
+  // Custom-domain routes are currently owned by the Cloudflare platform Worker
+  // `ellis-aegis-control-plane`. Keep this deploy lane on Workers.dev until an
+  // explicit route cutover is approved.
   "observability": {
     "enabled": true,
   },
@@ -57,20 +60,6 @@
     // Worker `ellis-aegis-control-plane`; this lane only produces jobs.
   },
 
-  "routes": [
-    {
-      "pattern": "mj.ellis-aegis.us/*",
-      "zone_name": "ellis-aegis.us",
-    },
-    {
-      "pattern": "mcp.ellis-aegis.us/*",
-      "zone_name": "ellis-aegis.us",
-    },
-    {
-      "pattern": "codex.ellis-aegis.us/*",
-      "zone_name": "ellis-aegis.us",
-    },
-  ],
   // Uncomment after Email Routing is enabled and your destination address is verified.
   // "send_email": [
   //   {
