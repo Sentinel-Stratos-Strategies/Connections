@@ -9,7 +9,7 @@
  * Ollama: 127.0.0.1:11434
  *
  * Usage:
- *   OLLAMA_MODELS=/Volumes/Stratos_Tools/models npx ts-node local-models-bridge.ts
+ *   OLLAMA_MODELS=/Volumes/Stratos_Tools/models npx tsx local-bridge/local-models-bridge.ts
  *
  * Zed / Cursor / Claude Desktop — add as local MCP server:
  *   { "url": "http://127.0.0.1:11437/sse" }
@@ -26,6 +26,12 @@ const BRIDGE_PORT = 11437;
 const OLLAMA_HOST = "127.0.0.1";
 const OLLAMA_PORT = 11434;
 const AUDIT_LOG_DIR = "/Volumes/SENTINEL/Logs/local-models-bridge";
+const TOKEN_HEADER = "x-mj-local-models-token";
+const MAX_PROMPT_CHARS = 12_000;
+const MAX_EXTRA_CONTEXT_CHARS = 4_000;
+const BRIDGE_TOKEN = process.env.MJ_LOCAL_MODELS_TOKEN?.trim() ?? "";
+const ALLOW_UNAUTH = process.env.MJ_LOCAL_MODELS_ALLOW_UNAUTH === "1";
+const ALLOWED_ORIGINS = resolveConfiguredOrigins(process.env.MJ_LOCAL_MODELS_ALLOWED_ORIGINS);
 
 const PERSONAS: Record<string, PersonaConfig> = {
   marvin: {
@@ -84,7 +90,7 @@ const TOOLS: McpTool[] = [
       required: ["prompt"],
       properties: {
         prompt: { type: "string", description: "The prompt or question for Marvin." },
-        context: { type: "string", description: "Optional additional context to prepend." },
+        context: { type: "string", description: "Optional bounded operator-supplied context to prepend." },
         stream: { type: "boolean", default: false },
       },
     },
@@ -98,7 +104,7 @@ const TOOLS: McpTool[] = [
       required: ["prompt"],
       properties: {
         prompt: { type: "string", description: "The prompt or question for Harbor." },
-        context: { type: "string", description: "Optional additional context to prepend." },
+        context: { type: "string", description: "Optional bounded operator-supplied context to prepend." },
         stream: { type: "boolean", default: false },
       },
     },
@@ -112,7 +118,7 @@ const TOOLS: McpTool[] = [
       required: ["prompt"],
       properties: {
         prompt: { type: "string", description: "The prompt or question for Dick Diggs." },
-        context: { type: "string", description: "Optional additional context to prepend." },
+        context: { type: "string", description: "Optional bounded operator-supplied context to prepend." },
         stream: { type: "boolean", default: false },
       },
     },
@@ -262,8 +268,8 @@ async function dispatchTool(
     return { content: [{ type: "text", text: `Unknown tool: ${toolName}` }] };
   }
 
-  const prompt = String(args.prompt ?? "");
-  const extraContext = String(args.context ?? "");
+  const prompt = boundedString(args.prompt, MAX_PROMPT_CHARS);
+  const extraContext = boundedString(args.context, MAX_EXTRA_CONTEXT_CHARS);
   const storedContext = loadPersonaContext(persona);
 
   const systemParts = [persona.system];
@@ -341,11 +347,14 @@ async function handleMcpRequest(body: string): Promise<object> {
 // ── HTTP server ───────────────────────────────────────────────────────────────
 
 const server = http.createServer(async (req, res) => {
-  const cors = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
+  const origin = req.headers.origin;
+  const cors = buildCorsHeaders(origin);
+
+  if (origin && !isAllowedOrigin(origin)) {
+    res.writeHead(403, cors);
+    res.end(JSON.stringify({ error: "origin_not_allowed" }));
+    return;
+  }
 
   if (req.method === "OPTIONS") {
     res.writeHead(204, cors);
@@ -365,6 +374,13 @@ const server = http.createServer(async (req, res) => {
 
   // MCP HTTP+SSE endpoint — Zed/Cursor connect here
   if (req.method === "POST" && (url.pathname === "/" || url.pathname === "/mcp")) {
+    if (!isAuthorized(req)) {
+      auditLog({ lane: "mj-local-models", action: "auth.denied", remoteAddress: req.socket.remoteAddress ?? "unknown" });
+      res.writeHead(401, { "Content-Type": "application/json", ...cors });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+
     let body = "";
     req.on("data", (c) => (body += c));
     req.on("end", async () => {
@@ -392,6 +408,7 @@ server.listen(BRIDGE_PORT, "127.0.0.1", () => {
   console.log(`║  MCP endpoint:  http://127.0.0.1:${BRIDGE_PORT}/mcp           ║`);
   console.log(`║  Health:        http://127.0.0.1:${BRIDGE_PORT}/healthz        ║`);
   console.log(`║  Audit log:     ${AUDIT_LOG_DIR}  ║`);
+  console.log(`║  Auth:          ${ALLOW_UNAUTH ? "disabled by MJ_LOCAL_MODELS_ALLOW_UNAUTH" : "token required"}             ║`);
   console.log(`╚══════════════════════════════════════════════════════════╝\n`);
   console.log(`Add to Zed settings:  { "context_servers": { "local-models": { "command": { "path": "...", "args": [] }, "settings": {} } } }`);
   console.log(`Or as raw MCP URL:    http://127.0.0.1:${BRIDGE_PORT}\n`);
@@ -401,3 +418,65 @@ server.on("error", (err) => {
   console.error(`[mj-local-models-bridge] Server error:`, err);
   process.exit(1);
 });
+
+function boundedString(value: unknown, maxChars: number): string {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  return text.length > maxChars ? text.slice(0, maxChars) : text;
+}
+
+function resolveConfiguredOrigins(raw: string | undefined): Set<string> {
+  const origins = new Set<string>([
+    `http://127.0.0.1:${BRIDGE_PORT}`,
+    `http://localhost:${BRIDGE_PORT}`,
+  ]);
+  for (const value of (raw ?? "").split(",")) {
+    const origin = value.trim();
+    if (origin && origin !== "*") origins.add(origin);
+  }
+  return origins;
+}
+
+function isAllowedOrigin(origin: string): boolean {
+  return ALLOWED_ORIGINS.has(origin);
+}
+
+function buildCorsHeaders(origin: string | undefined): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": `Content-Type, Authorization, ${TOKEN_HEADER}`,
+    "Vary": "Origin",
+  };
+  if (origin && isAllowedOrigin(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
+
+function isAuthorized(req: http.IncomingMessage): boolean {
+  if (ALLOW_UNAUTH) return true;
+  if (!BRIDGE_TOKEN) return false;
+  const provided = readRequestToken(req);
+  return Boolean(provided && timingSafeEqual(BRIDGE_TOKEN, provided));
+}
+
+function readRequestToken(req: http.IncomingMessage): string | null {
+  const headerToken = req.headers[TOKEN_HEADER] ?? req.headers[TOKEN_HEADER.toLowerCase()];
+  if (typeof headerToken === "string" && headerToken.trim()) return headerToken.trim();
+
+  const authorization = req.headers.authorization;
+  if (!authorization) return null;
+  const [scheme, token] = authorization.split(/\s+/, 2);
+  if (scheme?.toLowerCase() !== "bearer" || !token) return null;
+  return token.trim();
+}
+
+function timingSafeEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  const length = Math.max(leftBuffer.length, rightBuffer.length);
+  const paddedLeft = Buffer.alloc(length);
+  const paddedRight = Buffer.alloc(length);
+  leftBuffer.copy(paddedLeft);
+  rightBuffer.copy(paddedRight);
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(paddedLeft, paddedRight);
+}

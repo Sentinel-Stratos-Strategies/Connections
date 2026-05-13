@@ -86,15 +86,15 @@ export function capabilitiesForProvider(name: ProviderName): ProviderCapabilitie
     return {
       inventory: true,
       plan: true,
-      apply: true,
-      revert: true,
-      auditLog: true,
+      apply: false,
+      revert: false,
+      auditLog: false,
       rateLimit: false,
       waf: false,
       dns: false,
       workerRoutes: false,
       dryRun: true,
-      liveMutation: true,
+      liveMutation: false,
     };
   }
 

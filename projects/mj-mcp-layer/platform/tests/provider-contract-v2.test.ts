@@ -47,6 +47,39 @@ describe("provider contract v2", () => {
     assert.equal(caps.dryRun, true);
   });
 
+  test("Google remains dry-run only until real API mutation receipts exist", async () => {
+    const caps = capabilitiesForProvider("google");
+    assert.equal(caps.liveMutation, false);
+    assert.equal(caps.apply, false);
+    assert.equal(caps.revert, false);
+    assert.equal(caps.dryRun, true);
+
+    const facade = new ProviderV2Facade({
+      name: "google",
+      async getInventory() { throw new Error("not used"); },
+      async applyPolicy() { throw new Error("google_apply_not_implemented"); },
+      async revertPolicy() { throw new Error("google_revert_not_implemented"); },
+      async validatePolicy() { return { ok: true, errors: [] }; },
+      async generateDiff() { return "google dry-run"; },
+      async healthCheck() { return { ok: true, latency: 0 }; },
+      async validateAccess() { return { ok: true, permissions: [] }; },
+      async getAuditLog() { return []; },
+      async recordChange() {},
+    });
+    const plan = await facade.plan({ ...samplePolicy, targetProviders: ["google"] as const } as SecurityPolicy);
+    assert.equal(plan.dryRunOnly, true);
+    assert.equal(plan.mutationCount, 0);
+    await assert.rejects(
+      () => facade.apply(plan, {
+        approval_id: "approval-1",
+        approved_at: new Date().toISOString(),
+        approved_by: "operator",
+        scope: "test",
+      }),
+      /provider_apply_not_enabled:google/,
+    );
+  });
+
   test("Cloudflare facade produces approval-requiring provider plan", async () => {
     const adapter = new CloudflareAdapter({ apiToken: "test", zoneId: "zone" });
     const facade = new ProviderV2Facade(adapter);

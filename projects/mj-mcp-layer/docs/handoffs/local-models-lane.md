@@ -5,7 +5,7 @@
 **Bridge endpoint:** `http://127.0.0.1:11437`
 **MCP URL (for IDEs):** `http://127.0.0.1:11437`
 **Health check:** `http://127.0.0.1:11437/healthz`
-**Auth mode:** `mcp_connector` (no token required — localhost only)
+**Auth mode:** `mcp_connector` plus local bearer token for tool calls
 **Data boundary:** Air-gapped. No external egress. Zero API cost.
 
 ---
@@ -54,7 +54,15 @@ OLLAMA_MODELS=/Volumes/Stratos_Tools/models \
 
 ```sh
 cd /Volumes/Stratos_Tools/projects/Connections/projects/mj-mcp-layer/mcp-layer
-npx ts-node src/local-models-bridge.ts
+./start-bridge.sh
+```
+
+The startup script creates or reuses a local token file at `/Volumes/SENTINEL/Secrets/mj-local-models-bridge.token` and exports `MJ_LOCAL_MODELS_TOKEN` before launching the bridge. To run the bridge directly:
+
+```sh
+MJ_LOCAL_MODELS_TOKEN="$(cat /Volumes/SENTINEL/Secrets/mj-local-models-bridge.token)" \
+  OLLAMA_MODELS=/Volumes/Stratos_Tools/models \
+  npx tsx local-bridge/local-models-bridge.ts
 ```
 
 Or use the SENTINEL maintenance script:
@@ -75,12 +83,14 @@ In `~/.config/zed/settings.json`:
   "context_servers": {
     "mj-local-models": {
       "command": {
-        "path": "/Volumes/Stratos_Tools/homebrew/bin/node",
+        "path": "npx",
         "args": [
-          "/Volumes/Stratos_Tools/projects/Connections/projects/mj-mcp-layer/mcp-layer/src/local-models-bridge.ts"
+          "tsx",
+          "/Volumes/Stratos_Tools/projects/Connections/projects/mj-mcp-layer/mcp-layer/local-bridge/local-models-bridge.ts"
         ],
         "env": {
-          "OLLAMA_MODELS": "/Volumes/Stratos_Tools/models"
+          "OLLAMA_MODELS": "/Volumes/Stratos_Tools/models",
+          "MJ_LOCAL_MODELS_TOKEN": "set-from-/Volumes/SENTINEL/Secrets/mj-local-models-bridge.token"
         }
       },
       "settings": {}
@@ -95,6 +105,7 @@ Add to MCP server list in Cursor settings:
 ```
 Name: mj-local-models
 URL:  http://127.0.0.1:11437
+Header: Authorization: Bearer <token from /Volumes/SENTINEL/Secrets/mj-local-models-bridge.token>
 ```
 
 ### Claude Desktop
@@ -105,8 +116,11 @@ In `claude_desktop_config.json`:
   "mcpServers": {
     "mj-local-models": {
       "command": "npx",
-      "args": ["ts-node", "/Volumes/Stratos_Tools/projects/Connections/projects/mj-mcp-layer/mcp-layer/src/local-models-bridge.ts"],
-      "env": { "OLLAMA_MODELS": "/Volumes/Stratos_Tools/models" }
+      "args": ["tsx", "/Volumes/Stratos_Tools/projects/Connections/projects/mj-mcp-layer/mcp-layer/local-bridge/local-models-bridge.ts"],
+      "env": {
+        "OLLAMA_MODELS": "/Volumes/Stratos_Tools/models",
+        "MJ_LOCAL_MODELS_TOKEN": "set-from-/Volumes/SENTINEL/Secrets/mj-local-models-bridge.token"
+      }
     }
   }
 }
@@ -157,6 +171,8 @@ Actions that **do** require approval: `model.pull`, `training.run`, `persona.con
 | Secret handling | `never_return_secret_values` |
 | Log payloads | `false` — prompts and responses are NOT logged |
 
+Browser origins are allowlisted to `http://127.0.0.1:11437` and `http://localhost:11437` by default. Tool calls require `Authorization: Bearer <token>` or `x-mj-local-models-token: <token>` unless `MJ_LOCAL_MODELS_ALLOW_UNAUTH=1` is explicitly set for local debugging.
+
 ---
 
 ## Connection to GENESIS:MEMORY
@@ -196,5 +212,5 @@ Payloads are NOT logged. Only: timestamp, request ID, tool name, persona, model,
 
 1. **Models not yet pulled** — run the pull commands above once Ollama is confirmed running
 2. **Harbor context file** may need to be refreshed from `/Volumes/RESCUE_OS/memory/` — that volume access is slow
-3. **ts-node** must be available: `npm install -g ts-node typescript` (or use the Stratos_Tools homebrew Node)
+3. **Bridge token must be configured** — `start-bridge.sh` creates `/Volumes/SENTINEL/Secrets/mj-local-models-bridge.token`
 4. **GENESIS:MEMORY** React Native app not complete — bridge is ready, app shell needs to be wired up

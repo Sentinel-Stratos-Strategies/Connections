@@ -7,9 +7,10 @@ set -euo pipefail
 OLLAMA_BIN="/Volumes/Stratos_Tools/homebrew/bin/ollama"
 NODE_BIN="/Volumes/Stratos_Tools/homebrew/bin/node"
 BRIDGE_DIR="$(cd "$(dirname "$0")" && pwd)"
-BRIDGE_SRC="$BRIDGE_DIR/src/local-models-bridge.ts"
+BRIDGE_SRC="$BRIDGE_DIR/local-bridge/local-models-bridge.ts"
 OLLAMA_MODELS="/Volumes/Stratos_Tools/models"
 LOG_DIR="/Volumes/SENTINEL/Logs/local-models-bridge"
+TOKEN_FILE="${MJ_LOCAL_MODELS_TOKEN_FILE:-/Volumes/SENTINEL/Secrets/mj-local-models-bridge.token}"
 
 mkdir -p "$LOG_DIR"
 
@@ -33,12 +34,20 @@ for model in "${REQUIRED_MODELS[@]}"; do
   fi
 done
 
-# 3. Install ts-node if needed
-if ! command -v ts-node &>/dev/null && ! "$NODE_BIN" -e "require('ts-node')" 2>/dev/null; then
-  echo "[start] Installing ts-node..."
-  npm install -g ts-node typescript 2>/dev/null || true
+# 3. Ensure a local bridge token exists without writing secrets to the repo.
+if [[ -z "${MJ_LOCAL_MODELS_TOKEN:-}" ]]; then
+  mkdir -p "$(dirname "$TOKEN_FILE")"
+  if [[ ! -f "$TOKEN_FILE" ]]; then
+    umask 077
+    openssl rand -hex 32 > "$TOKEN_FILE"
+    chmod 600 "$TOKEN_FILE"
+    echo "[start] Created MJ local bridge token at $TOKEN_FILE"
+  fi
+  export MJ_LOCAL_MODELS_TOKEN="$(<"$TOKEN_FILE")"
 fi
+
+export MJ_LOCAL_MODELS_ALLOWED_ORIGINS="${MJ_LOCAL_MODELS_ALLOWED_ORIGINS:-http://127.0.0.1:11437,http://localhost:11437}"
 
 # 4. Start bridge
 echo "[start] Starting bridge on :11437..."
-OLLAMA_MODELS="$OLLAMA_MODELS" npx ts-node "$BRIDGE_SRC" 2>&1 | tee -a "$LOG_DIR/bridge-$(date +%Y%m%d).log"
+OLLAMA_MODELS="$OLLAMA_MODELS" npx tsx "$BRIDGE_SRC" 2>&1 | tee -a "$LOG_DIR/bridge-$(date +%Y%m%d).log"

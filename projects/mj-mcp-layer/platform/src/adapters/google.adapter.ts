@@ -7,7 +7,6 @@ import type {
   LedgerEntry,
   SecurityPolicy,
 } from "../core/types.js";
-import { createHash } from "node:crypto";
 
 interface GoogleCredentials {
   client_email: string;
@@ -46,29 +45,11 @@ export class GoogleAdapter implements ProviderAdapter {
   }
 
   async applyPolicy(policy: SecurityPolicy): Promise<ChangeRequest> {
-    console.log(`[google] applying policy: ${policy.name}`);
-    return {
-      id: crypto.randomUUID(),
-      name: policy.name,
-      targetProviders: ["google"],
-      policy,
-      requester: "automation",
-      status: "executed",
-      createdAt: new Date().toISOString(),
-    };
+    throw new Error(`google_apply_not_implemented:${policy.name}`);
   }
 
   async revertPolicy(version: string): Promise<ChangeRequest> {
-    console.log(`[google] reverting policy to: ${version}`);
-    return {
-      id: crypto.randomUUID(),
-      name: `revert-to-${version}`,
-      targetProviders: ["google"],
-      policy: {} as SecurityPolicy,
-      requester: "automation",
-      status: "executed",
-      createdAt: new Date().toISOString(),
-    };
+    throw new Error(`google_revert_not_implemented:${version}`);
   }
 
   async validatePolicy(policy: SecurityPolicy): Promise<{ ok: boolean; errors: string[] }> {
