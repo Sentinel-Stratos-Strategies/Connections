@@ -71,3 +71,9 @@ Initial implementation lives in `projects/macos-gui-openai-bridge/` and provides
 ### OpenAI skillset playbook
 
 See `docs/openai-skillset-playbook.md` for the documentation-grounded workflow for Codex/CLI-based kit authoring, validation, MCP connectors, and OpenAI backend pushes.
+
+## MJ Edge frontend branch
+
+A new customer/admin frontend prototype lives at `projects/mj-edge-dashboard/index.html` for tenant usage and subscription monitoring.
+
+CI now runs bridge compile + unit tests via `.github/workflows/ci.yml`.

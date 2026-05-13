@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  bridge-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile bridge
+        run: python3 -m py_compile projects/macos-gui-openai-bridge/src/bridge.py
+      - name: Run bridge tests
+        run: python3 -m unittest discover -s projects/macos-gui-openai-bridge/tests -p 'test_*.py' -v

@@ -1,0 +1,38 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>MJ Edge</title>
+<style>:root{--bg:#0b0d16;--panel:#13182a;--text:#eef2ff;--muted:#9aa6c0;--accent:#5eead4}*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui;background:var(--bg);color:var(--text)}.wrap{max-width:1200px;margin:0 auto;padding:24px}.card{background:var(--panel);border:1px solid #2a3150;border-radius:12px;padding:12px}.row{display:flex;gap:10px;flex-wrap:wrap}.tabs button{padding:8px 12px;border:1px solid #2b3553;background:#1d2338;color:#c5d1ea;border-radius:8px}.tabs button.active{border-color:var(--accent);color:#fff}.hidden{display:none}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #2a3150;text-align:left}.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.small{color:var(--muted);font-size:12px}.num{font-size:24px}.log{max-height:220px;overflow:auto}input,button{padding:8px;border-radius:8px;border:1px solid #2b3553;background:#0f1425;color:#fff}button{cursor:pointer;background:#1b2440}@media(max-width:800px){.kpi{grid-template-columns:repeat(2,1fr)}}</style>
+</head><body><div class="wrap">
+<h1>MJ Edge Command Layer</h1>
+<div class="card">
+  <h3>Login</h3>
+  <div class="row"><input id="email" placeholder="email" value="admin@mj.local"/><input id="password" type="password" value="admin123"/><button onclick="login()">Sign in</button><span id="who" class="small">Not signed in</span></div>
+</div>
+<div class="row" style="margin-top:10px"><div class="tabs"><button id="tab-admin" class="active" onclick="switchView('admin')">Admin</button><button id="tab-customer" onclick="switchView('customer')">Customer</button></div><input id="search" placeholder="Search tenants" oninput="reloadData()"/></div>
+<p id="status" class="small">Loading...</p>
+<section id="admin"><div class="kpi"><div class="card"><div class="small">Users</div><div class="num" id="k-users">0</div></div><div class="card"><div class="small">Subs</div><div class="num" id="k-subs">0</div></div><div class="card"><div class="small">MRR</div><div class="num" id="k-mrr">$0</div></div><div class="card"><div class="small">Risk</div><div class="num" id="k-risk">0</div></div></div><div class="card" style="margin-top:10px"><table><thead><tr><th>Tenant</th><th>Owner</th><th>Plan</th><th>Status</th><th>MRR</th><th>Last Seen</th></tr></thead><tbody id="tenant-body"></tbody></table></div></section>
+<section id="customer" class="hidden"><div class="card"><h3>Customer Actions</h3><div class="row"><button onclick="logEvent('Deploy started')">Deploy latest build</button><button onclick="logEvent('Billing opened')">Billing</button><button onclick="logEvent('Support ticket created')">Support</button></div></div></section>
+<div class="card" style="margin-top:10px"><h3>Activity</h3><div id="log" class="log"></div></div>
+</div>
+<script>
+let token=''; let role='';
+function setStatus(t){document.getElementById('status').textContent=t}
+async function login(){
+  try{setStatus('Signing in...');
+    const res=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value})});
+    if(!res.ok) throw new Error('Invalid credentials');
+    const data=await res.json(); token=data.token; role=data.role; who.textContent=`Signed in: ${email.value} (${role})`; setStatus('Signed in');
+    switchView(role==='admin'?'admin':'customer');
+    reloadData();
+  }catch(e){setStatus(e.message)}
+}
+function switchView(v){
+  admin.classList.toggle('hidden',v!=='admin'); customer.classList.toggle('hidden',v!=='customer');
+  document.getElementById('tab-admin').classList.toggle('active',v==='admin');
+  document.getElementById('tab-customer').classList.toggle('active',v==='customer');
+}
+async function api(path){const r=await fetch(path,{headers:{Authorization:`Bearer ${token}`}}); if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json();}
+function renderTenants(rows){tenant_body.innerHTML=rows.map(r=>`<tr><td>${r.tenant}</td><td>${r.owner}</td><td>${r.plan}</td><td>${r.status}</td><td>$${r.mrr}</td><td>${r.lastSeen}</td></tr>`).join(''); k_users.textContent=rows.length; k_subs.textContent=rows.filter(r=>r.plan!=='Trial').length; k_mrr.textContent='$'+rows.reduce((a,b)=>a+b.mrr,0); k_risk.textContent=rows.filter(r=>r.status!=='active').length;}
+function renderEvents(rows){log.innerHTML=rows.map(e=>`<div>📡 ${e.message} <span class='small'>${e.ts}</span></div>`).join('')}
+async function reloadData(){if(!token){setStatus('Sign in first');return;} try{setStatus('Loading data...'); const q=encodeURIComponent(search.value||''); const [t,e]=await Promise.all([api(`/api/tenants?q=${q}`),api('/api/events')]); renderTenants(t.tenants||[]); renderEvents(e.events||[]); setStatus(`Loaded as ${t.role}`);}catch(err){setStatus('Load failed: '+err.message)}}
+function logEvent(message){const ts=new Date().toISOString(); log.innerHTML=`<div>✅ ${message} <span class='small'>${ts}</span></div>`+log.innerHTML}
+</script>
+</body></html>
