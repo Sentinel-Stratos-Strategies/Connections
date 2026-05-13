@@ -143,26 +143,26 @@ export class CloudShellPolicyEngine {
     }
 
     const commandClass = classifyCommand(request.command);
-    const requiresBudget = requiresBudget(commandClass);
-    const requiresApproval = requiresApproval(session.capability, commandClass, request);
+    const budgetRequired = requiresBudget(commandClass);
+    const approvalRequired = requiresApproval(session.capability, commandClass, request);
     const budgetCategory = budgetCategoryFor(commandClass);
 
     if (!capabilityAllows(session.capability, commandClass)) {
       return this.deny(
         `${session.capability} cannot execute ${commandClass}`,
         commandClass,
-        requiresApproval,
-        requiresBudget,
+        approvalRequired,
+        budgetRequired,
         budgetCategory,
       );
     }
 
-    if (requiresApproval && !request.approval_ref) {
+    if (approvalRequired && !request.approval_ref) {
       return this.deny(
         `${commandClass} requires approval metadata`,
         commandClass,
         true,
-        requiresBudget,
+        budgetRequired,
         budgetCategory,
       );
     }
@@ -171,8 +171,8 @@ export class CloudShellPolicyEngine {
       return this.deny(
         `command class ${commandClass} conflicts with expect_mutation=false`,
         commandClass,
-        requiresApproval,
-        requiresBudget,
+        approvalRequired,
+        budgetRequired,
         budgetCategory,
       );
     }
@@ -181,8 +181,8 @@ export class CloudShellPolicyEngine {
       allowed: true,
       reason: "allowed",
       command_class: commandClass,
-      requires_approval: requiresApproval,
-      requires_budget: requiresBudget,
+      requires_approval: approvalRequired,
+      requires_budget: budgetRequired,
       budget_category: budgetCategory,
       redaction_required: true,
     };
