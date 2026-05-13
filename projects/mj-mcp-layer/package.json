@@ -6,11 +6,13 @@
   "scripts": {
     "build": "npm --prefix platform run build && npm --prefix frontend run build",
     "check": "npm --prefix mcp-layer run typecheck && npm --prefix platform run typecheck && npm --prefix frontend run typecheck",
+    "evidence": "node scripts/write-evidence-bundle.mjs",
     "test": "npm --prefix mcp-layer test && npm --prefix platform test",
+    "no-stray": "node scripts/assert-no-stray.mjs",
     "frontend:dev": "npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend run build",
     "frontend:check": "npm --prefix frontend run typecheck",
-    "mj:golden": "npm run check && npm test && npm run build"
+    "mj:golden": "npm run no-stray && npm run check && npm test && npm run build && npm run evidence"
   },
   "dependencies": {
     "yaml": "^2.8.4"

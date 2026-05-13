@@ -33,6 +33,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Secret scan
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --no-git --redact --exit-code 1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -53,6 +56,21 @@ jobs:
       - name: Run MJ golden path
         run: npm --prefix projects/mj-mcp-layer run mj:golden
 
+      - name: Generate SBOMs
+        run: |
+          mkdir -p projects/mj-mcp-layer/artifacts/evidence
+          npm sbom --prefix projects/mj-mcp-layer/mcp-layer --sbom-format=cyclonedx --json > projects/mj-mcp-layer/artifacts/evidence/sbom.mcp-layer.json
+          npm sbom --prefix projects/mj-mcp-layer/platform --sbom-format=cyclonedx --json > projects/mj-mcp-layer/artifacts/evidence/sbom.platform.json
+          npm sbom --prefix projects/mj-mcp-layer/frontend --sbom-format=cyclonedx --json > projects/mj-mcp-layer/artifacts/evidence/sbom.frontend.json
+          cd projects/mj-mcp-layer/artifacts/evidence
+          sha256sum sbom*.json > sbom-checksums.sha256
+
+      - name: Audit dependencies
+        run: |
+          npm audit --prefix projects/mj-mcp-layer/mcp-layer --audit-level=high
+          npm audit --prefix projects/mj-mcp-layer/platform --audit-level=high
+          npm audit --prefix projects/mj-mcp-layer/frontend --audit-level=high
+
       - name: Validate Cloudflare scripts
         run: bash -n projects/mj-mcp-layer/cloudflare/*.sh
 
@@ -71,8 +89,28 @@ jobs:
           NODE
 
       - name: Dry-run Worker bundle
-        run: npx wrangler deploy --dry-run
+        run: |
+          set -eo pipefail
+          npx wrangler deploy --dry-run 2>&1 | tee ../artifacts/evidence/cloudflare-dry-run.txt
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const path = "../artifacts/evidence/cloudflare-dry-run.json";
+          fs.writeFileSync(path, JSON.stringify({
+            generated_at: new Date().toISOString(),
+            command: "npx wrangler deploy --dry-run",
+            output: "cloudflare-dry-run.txt",
+            status: "passed"
+          }, null, 2) + "\n");
+          NODE
         working-directory: projects/mj-mcp-layer/mcp-layer
+
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mj-layer-validation-evidence
+          path: projects/mj-mcp-layer/artifacts/evidence/**
+          retention-days: 30
 
   deploy-worker:
     runs-on: ubuntu-latest
@@ -122,6 +160,7 @@ jobs:
           path: |
             projects/mj-mcp-layer/artifacts/mj-mcp-layer/deployment-manifest.json
             projects/mj-mcp-layer/artifacts/mj-mcp-layer/smoke-results.json
+          retention-days: 30
 
   harden-and-scan:
     runs-on: ubuntu-latest
@@ -205,3 +244,4 @@ jobs:
         with:
           name: mj-layer-hardening-${{ matrix.zone_name }}
           path: projects/mj-mcp-layer/artifacts/**
+          retention-days: 30

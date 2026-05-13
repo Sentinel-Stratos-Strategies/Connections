@@ -2,6 +2,11 @@
 .DS_Store
 projects/mj-mcp-layer/artifacts/
 .junie/
+untitled/
+.idea/
+*.iml
+*.pem
+*.key
 __pycache__/
 *.py[codz]
 *$py.class
@@ -140,6 +145,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .envrc
 .venv
 env/

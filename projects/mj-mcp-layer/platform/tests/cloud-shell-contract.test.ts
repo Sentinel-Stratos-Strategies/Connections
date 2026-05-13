@@ -120,6 +120,27 @@ describe("cloud shell contract", () => {
     assert.doesNotMatch(redacted.redacted, /sk-testsecret/);
   });
 
+  test("generic cat is unknown and secret-like cat is denied before readonly classification", () => {
+    assert.equal(classifyCommand("cat README.md"), "unknown_mutation");
+    assert.equal(classifyCommand("cat .env"), "secret_read");
+
+    const session = engine.createSession({
+      actor: "operator",
+      tenant: "ellis",
+      purpose: "stage-a safety",
+      capability: "shell.breakglass",
+    });
+
+    const decision = engine.evaluate(session, {
+      session_id: session.id,
+      request_id: "req-secret-cat",
+      command: "cat .env",
+    });
+
+    assert.equal(decision.allowed, false);
+    assert.equal(decision.command_class, "secret_read");
+  });
+
   test("transcript manifests include command hashes and decisions", () => {
     const session = engine.createSession({
       actor: "operator",

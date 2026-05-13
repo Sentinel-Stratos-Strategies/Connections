@@ -3,6 +3,7 @@
 import { parseArgs } from "node:util";
 import { readFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse as parseYAML } from "yaml";
 import type { ProviderName, SecurityPolicy } from "../core/types.js";
 import type { ProviderAdapter } from "../adapters/provider.interface.js";
@@ -58,6 +59,7 @@ const COMMANDS = [
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
+type SigningContext = "court" | "visa";
 
 const HELP = `
 mcp-cli — MJ MCP Platform CLI
@@ -661,7 +663,7 @@ function handleVisaCommand(
   zone?: string,
   format?: string,
 ): void {
-  const signingKey = process.env.MCP_LEDGER_KEY ?? "visa-default-key";
+  const signingKey = resolveSigningKey("visa");
   const visaEngine = new VisaEngine(resolve("artifacts/visa-store.json"), signingKey);
 
   if (agent && scope) {
@@ -723,7 +725,7 @@ async function handleCourt(
   const tester = new MutationTester();
   const rollbackEngine = new RollbackEngine(adapters, ledger);
   const evidenceEngine = new EvidenceEngine(
-    process.env.MCP_LEDGER_KEY ?? "court-key",
+    resolveSigningKey("court"),
     resolve("artifacts"),
   );
   const budgetEngine = new MutationBudgetEngine(
@@ -1082,7 +1084,27 @@ function loadPolicyFile(filePath: string): SecurityPolicy {
   return JSON.parse(content) as SecurityPolicy;
 }
 
-main().catch((err) => {
-  console.error("Fatal error:", err);
-  process.exit(1);
-});
+export function resolveSigningKey(
+  context: SigningContext,
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const key = env.MCP_LEDGER_KEY?.trim();
+  if (key) return key;
+
+  if (env.MJ_ALLOW_TEST_SIGNING_KEY === "1") {
+    return `test-only-${context}-key`;
+  }
+
+  throw new Error(`MCP_LEDGER_KEY is required for ${context} signing`);
+}
+
+function isCliEntrypoint(): boolean {
+  return Boolean(process.argv[1]) && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+}
+
+if (isCliEntrypoint()) {
+  main().catch((err) => {
+    console.error("Fatal error:", err);
+    process.exit(1);
+  });
+}

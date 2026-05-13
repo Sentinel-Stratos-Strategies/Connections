@@ -255,8 +255,10 @@ export class CloudShellPolicyEngine {
 
 export function classifyCommand(command: string): ShellCommandClass {
   const normalized = command.trim().toLowerCase();
+  const denied = DENIED_PATTERNS.find((entry) => entry.pattern.test(normalized));
+  if (denied) return denied.commandClass;
 
-  if (/^(pwd|ls|cat\s+[^;&|]*|git\s+status|git\s+diff|npm\s+.*\s+test|npm\s+.*\s+run\s+typecheck|bash\s+-n\s+)/.test(normalized)) {
+  if (/^(pwd|ls|git\s+status|git\s+diff|npm\s+.*\s+test|npm\s+.*\s+run\s+typecheck|bash\s+-n\s+)/.test(normalized)) {
     return "readonly";
   }
   if (/(health|scan|dry-run|plan|whoami|wrangler\s+deploy\s+--dry-run)/.test(normalized)) {
