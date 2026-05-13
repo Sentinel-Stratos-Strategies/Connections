@@ -1,5 +1,8 @@
 name: MJ Layer Drift Scan
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   schedule:
     - cron: "0 */6 * * *"
@@ -25,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: MJ_Layer
+          ref: cursor/mj-layer-enterprise-ready-1c9b
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,7 +49,7 @@ jobs:
           key='${{ matrix.zone_id_secret }}'
           val="$(printenv "$key" || true)"
           if [ -z "$val" ]; then
-            echo "Missing secret $key — skipping zone"
+            echo "Missing secret $key - skipping zone"
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -72,6 +75,7 @@ jobs:
             projects/mj-mcp-layer/artifacts/drift-*.md
             projects/mj-mcp-layer/artifacts/scan-*.json
             projects/mj-mcp-layer/artifacts/ALERT-*.md
+          retention-days: 30
 
       - name: Alert on drift
         if: failure() && steps.zone.outputs.skip != 'true'
