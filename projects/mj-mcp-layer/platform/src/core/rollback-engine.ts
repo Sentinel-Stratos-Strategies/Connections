@@ -175,8 +175,12 @@ export class RollbackEngine {
       try {
         switch (step.action) {
           case "remove":
-          case "restore":
             await adapter.revertPolicy(`rollback-${step.resource}`);
+            completed++;
+            break;
+
+          case "restore":
+            await adapter.getInventory();
             completed++;
             break;
 

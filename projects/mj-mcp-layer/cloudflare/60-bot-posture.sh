@@ -39,32 +39,38 @@ bot_failures=0
 
 if [[ -z "$existing" ]]; then
   echo "  [+] bot exemption"
+  result=""
   result=$(req bot POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload") || {
     echo "  ❌ Failed to create bot exemption"
     log_json "$(jq -nc '{stage:"bot",event:"rule_create_failed"}')"
     ((bot_failures++)) || true
   }
-  ok=$(echo "${result:-{}}" | jq -r '.success // false')
-  if [[ "$ok" != "true" ]]; then
-    echo "  ❌ API rejected bot exemption"
-    log_json "$(jq -nc --argjson r "${result:-{}}" '{stage:"bot",event:"rule_create_rejected",response:$r}')"
-    ((bot_failures++)) || true
+  if [[ -n "$result" ]]; then
+    ok=$(echo "$result" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected bot exemption"
+      log_json "$(jq -nc --argjson r "$result" '{stage:"bot",event:"rule_create_rejected",response:$r}')"
+      ((bot_failures++)) || true
+    fi
   fi
 else
   ex_id=$(echo "$existing" | jq -r '.id')
   existing_fp=$(echo "$existing" | jq -c '{expression,action,enabled,action_parameters}' | sha256sum | cut -d' ' -f1)
   if [[ "$want_fp" != "$existing_fp" ]]; then
     echo "  [~] bot exemption"
+    result=""
     result=$(req bot PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload") || {
       echo "  ❌ Failed to update bot exemption"
       log_json "$(jq -nc '{stage:"bot",event:"rule_update_failed"}')"
       ((bot_failures++)) || true
     }
-    ok=$(echo "${result:-{}}" | jq -r '.success // false')
-    if [[ "$ok" != "true" ]]; then
-      echo "  ❌ API rejected bot exemption update"
-      log_json "$(jq -nc --argjson r "${result:-{}}" '{stage:"bot",event:"rule_update_rejected",response:$r}')"
-      ((bot_failures++)) || true
+    if [[ -n "$result" ]]; then
+      ok=$(echo "$result" | jq -r '.success // false')
+      if [[ "$ok" != "true" ]]; then
+        echo "  ❌ API rejected bot exemption update"
+        log_json "$(jq -nc --argjson r "$result" '{stage:"bot",event:"rule_update_rejected",response:$r}')"
+        ((bot_failures++)) || true
+      fi
     fi
   else
     echo "  [=] bot exemption (no changes, skipping)"

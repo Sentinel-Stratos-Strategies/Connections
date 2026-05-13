@@ -307,12 +307,19 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
   const method = typeof body.method === "string" ? body.method : "";
   const tenantId = request.headers.get("x-tenant-id") ?? "unknown";
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const hasJsonRpcId = Object.prototype.hasOwnProperty.call(body, "id");
+  const responseId = hasJsonRpcId ? body.id : requestId;
 
   ctx.waitUntil(logEvent(env, {
     actor: auth.actor,
     category: "mcp.execute",
     message: `MCP method=${method} tenant=${tenantId}`,
-    metadata: JSON.stringify(buildAuditMetadata(request, { mcpMethod: method, tenantId, requestId })),
+    metadata: JSON.stringify(buildAuditMetadata(request, {
+      mcpMethod: method,
+      requestId,
+      responseId,
+      tenantId,
+    })),
     severity: "info",
     source: "worker",
   }));
@@ -320,7 +327,7 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
   if (method === "tools/list") {
     return json({
       jsonrpc: "2.0",
-      id: requestId,
+      id: responseId,
       result: {
         tools: [
           { name: "health_check", description: "Run infrastructure health check", inputSchema: { type: "object", properties: {} } },
@@ -337,7 +344,7 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
     const toolName = typeof params.name === "string" ? params.name : "";
     return json({
       jsonrpc: "2.0",
-      id: requestId,
+      id: responseId,
       result: {
         content: [{ type: "text", text: `Tool '${toolName}' acknowledged. Dispatch queued for tenant '${tenantId}'.` }],
       },
@@ -346,7 +353,7 @@ async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContex
 
   return json({
     jsonrpc: "2.0",
-    id: requestId,
+    id: responseId,
     error: { code: -32601, message: `Method not found: ${method}` },
   }, { env, request, status: 400 });
 }

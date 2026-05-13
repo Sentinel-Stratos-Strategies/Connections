@@ -103,4 +103,17 @@ describe("control-plane policy", () => {
     assert.equal(response.status, 200);
     assert.match(capturedSql, /LIMIT 50$/);
   });
+
+  test("mcp execute echoes json-rpc id from request payload", async () => {
+    const response = await fetchWorker("/mcp", {
+      body: JSON.stringify({ id: "rpc-42", method: "tools/list" }),
+      headers: authHeaders(policyHeaders()),
+      method: "POST",
+    });
+
+    const body = await readJson(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.id, "rpc-42");
+    assert.equal(body.jsonrpc, "2.0");
+  });
 });
