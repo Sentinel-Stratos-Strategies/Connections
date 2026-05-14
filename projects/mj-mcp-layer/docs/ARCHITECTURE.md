@@ -9,5 +9,5 @@ This codebase contains:
 
 ## Kevis Module
 - Included integration source: `apps-connectors/kevis-keyring-007/`
-- Routed via `kevis.your-domain.example` through `mj-edge`
+- Routed via `kevis.ellis-aegis.us` through `mj-edge`
 - Uses the same policy + audit pipeline as Hitch and agent hosts

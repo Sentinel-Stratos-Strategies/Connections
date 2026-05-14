@@ -1,0 +1,33 @@
+{
+  "lane": "mj-network-solutions",
+  "platform": "network-solutions",
+  "purpose": "Coordinate approved domain search, registrar planning, and DNS handoff checks without directly mutating production DNS.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "domain.search",
+    "domain.availability_check",
+    "dns.instructions_prepare",
+    "registrar.plan"
+  ],
+  "deniedActions": [
+    "domain.purchase_without_approval",
+    "domain.transfer",
+    "account.billing_modify",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "domain.purchase",
+    "registrar_dns_update",
+    "domain_transfer_start"
+  ],
+  "dataBoundaries": {
+    "externalRead": "domain_queries_only",
+    "externalWrite": "purchase_and_dns_require_approval",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

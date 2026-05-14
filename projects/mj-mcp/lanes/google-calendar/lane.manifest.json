@@ -1,0 +1,35 @@
+{
+  "lane": "mj-google-calendar",
+  "platform": "google-calendar",
+  "purpose": "Coordinate approved scheduling, daily briefs, meeting prep, and availability checks for MJ operator workflows.",
+  "owner": "Sentinel",
+  "authMode": "oauth",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "calendar.read",
+    "availability.check",
+    "daily_brief.prepare",
+    "meeting_prep.prepare",
+    "event.draft"
+  ],
+  "deniedActions": [
+    "calendar.export_all",
+    "event.delete_unapproved",
+    "attendee.spam",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "event.create",
+    "event.update",
+    "event.delete",
+    "invite.send"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_calendar_scope_only",
+    "externalWrite": "calendar_mutations_require_approval",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

@@ -3,15 +3,35 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./load-cf-env.sh
 source "$SCRIPT_DIR/load-cf-env.sh"
-BASELINE="${BASELINE:-./docs/security-baseline.yaml}"
+BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
 ART_DIR="${ART_DIR:-./artifacts}"
 LOG="$ART_DIR/run-log.jsonl"
+DEFERRED="$ART_DIR/control-deferrals.jsonl"
 mkdir -p "$ART_DIR"
 : "${CF_API_TOKEN:?}"
 : "${CF_ZONE_ID:?}"
 API="https://api.cloudflare.com/client/v4"
 
 log_json(){ printf '%s\n' "$1" >> "$LOG"; }
+is_provider_limit(){
+  jq -e '.errors[]?.message | test("exceeded the maximum number of rules|not entitled")' >/dev/null 2>&1 <<<"$1"
+}
+defer_control(){
+  local stage="$1" desc="$2" response="$3"
+  local strict="${HARDENING_STRICT_PROVIDER_LIMITS:-0}"
+  log_json "$(jq -nc --arg stage "$stage" --arg d "$desc" --argjson r "$response" '{stage:$stage,event:"control_deferred",description:$d,response:$r}')"
+  jq -nc \
+    --arg ts "$(date -u +%FT%TZ)" \
+    --arg stage "$stage" \
+    --arg d "$desc" \
+    --argjson strict "$( [[ "$strict" == "1" ]] && echo true || echo false )" \
+    --argjson r "$response" \
+    '{ts:$ts,stage:$stage,event:"provider_limit_deferred",description:$d,strict:$strict,response:$r}' >> "$DEFERRED"
+  if [[ "$strict" == "1" ]]; then
+    return 1
+  fi
+  return 0
+}
 req(){
   local stage="$1" method="$2" path="$3" body="${4:-}"
   local out code ts
@@ -34,20 +54,62 @@ rs_id=$(echo "$entry" | jq -r '.result.id // empty')
 [[ -z "$rs_id" ]] && { echo "❌ missing firewall custom ruleset for bot exemption"; exit 2; }
 existing=$(echo "$entry" | jq -c --arg d "$desc" '.result.rules[]? | select(.description==$d)' | head -n1)
 payload=$(jq -nc --arg d "$desc" --arg e "$expr" '{description:$d,expression:$e,action:"skip",enabled:true,action_parameters:{phases:["http_request_firewall_managed"]}}')
+want_fp=$(echo "$payload" | jq -c '{expression,action,enabled,action_parameters}' | sha256sum | cut -d' ' -f1)
+bot_failures=0
 
 if [[ -z "$existing" ]]; then
   echo "  [+] bot exemption"
-  req bot POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload" >/dev/null
+  result=""
+  result=$(req bot POST "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules" "$payload") || {
+    echo "  ❌ Failed to create bot exemption"
+    log_json "$(jq -nc '{stage:"bot",event:"rule_create_failed"}')"
+    ((bot_failures++)) || true
+  }
+  if [[ -n "$result" ]]; then
+    ok=$(echo "$result" | jq -r '.success // false')
+    if [[ "$ok" != "true" ]]; then
+      echo "  ❌ API rejected bot exemption"
+      if is_provider_limit "$result"; then
+        echo "  ℹ️ provider limit deferred for bot exemption"
+        defer_control "bot" "$desc" "$result" || ((bot_failures++)) || true
+      else
+        log_json "$(jq -nc --argjson r "$result" '{stage:"bot",event:"rule_create_rejected",response:$r}')"
+        ((bot_failures++)) || true
+      fi
+    fi
+  fi
 else
   ex_id=$(echo "$existing" | jq -r '.id')
-  ex_expr=$(echo "$existing" | jq -r '.expression')
-  if [[ "$ex_expr" != "$expr" ]]; then
+  existing_fp=$(echo "$existing" | jq -c '{expression,action,enabled,action_parameters}' | sha256sum | cut -d' ' -f1)
+  if [[ "$want_fp" != "$existing_fp" ]]; then
     echo "  [~] bot exemption"
-    req bot PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload" >/dev/null
+    result=""
+    result=$(req bot PATCH "/zones/$CF_ZONE_ID/rulesets/$rs_id/rules/$ex_id" "$payload") || {
+      echo "  ❌ Failed to update bot exemption"
+      log_json "$(jq -nc '{stage:"bot",event:"rule_update_failed"}')"
+      ((bot_failures++)) || true
+    }
+    if [[ -n "$result" ]]; then
+      ok=$(echo "$result" | jq -r '.success // false')
+      if [[ "$ok" != "true" ]]; then
+        echo "  ❌ API rejected bot exemption update"
+        if is_provider_limit "$result"; then
+          echo "  ℹ️ provider limit deferred for bot exemption update"
+          defer_control "bot" "$desc" "$result" || ((bot_failures++)) || true
+        else
+          log_json "$(jq -nc --argjson r "$result" '{stage:"bot",event:"rule_update_rejected",response:$r}')"
+          ((bot_failures++)) || true
+        fi
+      fi
+    fi
   else
-    echo "  [=] bot exemption"
+    echo "  [=] bot exemption (no changes, skipping)"
   fi
 fi
 
 echo "ℹ️ note: zone-level Super Bot Fight Mode tuning must be validated against plan support"
+if [[ $bot_failures -gt 0 ]]; then
+  echo "⚠️ bot posture stage completed with $bot_failures failure(s)"
+  exit 1
+fi
 echo "✅ bot posture stage complete"

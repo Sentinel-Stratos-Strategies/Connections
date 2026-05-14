@@ -1,0 +1,35 @@
+{
+  "lane": "mj-build-ios",
+  "platform": "build-ios-apps",
+  "purpose": "Coordinate approved iOS app builds, simulator validation, SwiftUI implementation, App Intents, and performance checks.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "xcode.build",
+    "simulator.run",
+    "swiftui.review",
+    "app_intents.implement",
+    "performance.profile",
+    "test.triage"
+  ],
+  "deniedActions": [
+    "signing_secret_read",
+    "keychain.export",
+    "appstore.release_without_approval",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "signing_change",
+    "provisioning_profile_update",
+    "release_archive_upload"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_ios_projects_only",
+    "externalWrite": "repo_patch_and_simulator_actions_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

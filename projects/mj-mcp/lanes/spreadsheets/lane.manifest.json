@@ -1,0 +1,34 @@
+{
+  "lane": "mj-spreadsheets",
+  "platform": "spreadsheets",
+  "purpose": "Create, analyze, render, and verify spreadsheet artifacts for MJ evidence, billing models, and operational reporting.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "sheet.create",
+    "sheet.analyze",
+    "sheet.visualize",
+    "sheet.render_verify",
+    "csv.transform"
+  ],
+  "deniedActions": [
+    "customer_data_dump_unapproved",
+    "secret.read",
+    "financial_record_mutate_unapproved",
+    "policy_control.bypass"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "financial_model_publish",
+    "customer_data_export",
+    "external_sheet_share"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_spreadsheet_scope_only",
+    "externalWrite": "sheet_artifacts_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

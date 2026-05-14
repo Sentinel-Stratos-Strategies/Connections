@@ -1,8 +1,8 @@
 # Hitch + Kevis Cutover Runbook
 
 ## DNS targets
-- hitch.your-domain.example -> mj-edge worker route
-- kevis.your-domain.example -> mj-edge worker route
+- hitch.ellis-aegis.us -> mj-edge worker route
+- kevis.ellis-aegis.us -> mj-edge worker route
 - codex/cursor/gemini/chatgpt subdomains -> mj-edge worker route
 
 ## Order
@@ -13,9 +13,9 @@
 5. Validate `/turn/*` method enforcement.
 
 ## Validation commands
-- curl -s -o /dev/null -w "%{http_code}" https://hitch.your-domain.example/mcp
-- curl -s -o /dev/null -w "%{http_code}" https://kevis.your-domain.example/mcp
-- curl -s -o /dev/null -w "%{http_code}" https://codex.your-domain.example/mcp
-- curl -s -o /dev/null -w "%{http_code}" https://cursor.your-domain.example/mcp
-- curl -s -o /dev/null -w "%{http_code}" https://gemini.your-domain.example/mcp
-- curl -s -o /dev/null -w "%{http_code}" https://chatgpt.your-domain.example/mcp
+- curl -s -o /dev/null -w "%{http_code}" https://hitch.ellis-aegis.us/mcp
+- curl -s -o /dev/null -w "%{http_code}" https://kevis.ellis-aegis.us/mcp
+- curl -s -o /dev/null -w "%{http_code}" https://codex.ellis-aegis.us/mcp
+- curl -s -o /dev/null -w "%{http_code}" https://cursor.ellis-aegis.us/mcp
+- curl -s -o /dev/null -w "%{http_code}" https://gemini.ellis-aegis.us/mcp
+- curl -s -o /dev/null -w "%{http_code}" https://chatgpt.ellis-aegis.us/mcp

@@ -1,6 +1,15 @@
+# Wrangler build artifacts
+.wrangler/
+
 # Byte-compiled / optimized / DLL files
 .DS_Store
+projects/mj-mcp-layer/artifacts/
 .junie/
+untitled/
+.idea/
+*.iml
+*.pem
+*.key
 __pycache__/
 *.py[codz]
 *$py.class
@@ -13,6 +22,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+node_modules/
 downloads/
 eggs/
 .eggs/
@@ -138,6 +148,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .envrc
 .venv
 env/
@@ -184,9 +195,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#  and can be added to the global gitignore or merged into this file. However, if you prefer,
 #  you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 

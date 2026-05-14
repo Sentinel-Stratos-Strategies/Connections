@@ -1,6 +1,6 @@
 # Change Request Protocol — for subordinate agents
 
-Other agents (Cursor, Gemini, Antigravity, MCP clients, future tools) **may not** modify `your-domain.example` directly. They submit a change request to Codex. Codex validates, executes, and returns a receipt.
+Other agents (Cursor, Gemini, Antigravity, MCP clients, future tools) **may not** modify `ellis-aegis.us` directly. They submit a change request to Codex. Codex validates, executes, and returns a receipt.
 
 ---
 

@@ -1,0 +1,34 @@
+{
+  "lane": "mj-presentations",
+  "platform": "presentations",
+  "purpose": "Build and verify premium MJ enterprise slide decks, investor narratives, and customer-support presentations.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "deck.create",
+    "deck.edit",
+    "deck.render_verify",
+    "narrative.structure",
+    "slide.export"
+  ],
+  "deniedActions": [
+    "confidential_deck_publish_unapproved",
+    "secret.read",
+    "asset_license_bypass",
+    "policy_control.bypass"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "external_deck_share",
+    "investor_deck_finalize",
+    "customer_deck_publish"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_presentation_scope_only",
+    "externalWrite": "deck_artifacts_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

@@ -72,6 +72,21 @@
         "logPayloads": { "type": "boolean" }
       },
       "required": ["externalRead", "externalWrite", "truthWrite", "secretHandling", "logPayloads"]
+    },
+    "mcpConnection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transport": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "requiredHeaders": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "authHeader": { "type": "string" },
+        "authScheme": { "type": "string" }
+      },
+      "required": ["transport", "endpoint", "requiredHeaders", "authHeader", "authScheme"]
     }
   }
 }

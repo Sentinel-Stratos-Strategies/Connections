@@ -53,11 +53,16 @@ projects/mj-mcp/
     railway/lane.manifest.json
     github/lane.manifest.json
     cloudflare/lane.manifest.json
+  connections/
+    infrastructure-connections.json
+  console/
+    CONSOLE_CONNECTIONS.md
   schemas/
     lane.schema.json
     action.schema.json
     audit-event.schema.json
     memory-projection.schema.json
+    infrastructure-connections.schema.json
   policies/
     platform-permissions.json
     data-boundaries.md
@@ -85,4 +90,17 @@ Truth cannot be overwritten by external lanes.
 
 ## Build status
 
-This scaffold is intentionally non-executable. It defines the contract and lane shape before runtime code is added to Cloudflare Workers or other deployment targets.
+This scaffold is intentionally separate from the enterprise runtime in `projects/mj-mcp-layer/`.
+It defines mini-MJ lane contracts and the connection map that lets Codex, Cloudflare, GitHub,
+OpenAI, Google, Notion, Linear, and future lanes attach to the enterprise control plane without
+becoming a single over-privileged integration.
+
+## Runtime connection
+
+The deployed enterprise runtime now mirrors the console registry at:
+
+```text
+GET https://mcp.ellis-aegis.us/api/console/lanes
+```
+
+That route is protected by the same operator-token and policy-header gate as the rest of the MCP control plane. See `console/CONSOLE_CONNECTIONS.md` for the exact console connection pattern.

@@ -1,79 +1,92 @@
 # Security baseline — single source of truth for Cloudflare hardening
 # Codex reads this file. Do not hand-edit Cloudflare without updating here.
 version: 1
-zone: your-domain.example
-last_updated: 2026-04-30
-owner: operator@example.com
+zone: ellis-aegis.us
+last_updated: 2026-05-13
+owner: operator@ellis-aegis.us
 
 hosts:
-  - host: codex.your-domain.example
+  - host: mj.ellis-aegis.us
     role: mcp
     canonical: true
-  - host: cursor.your-domain.example
+  - host: mcp.ellis-aegis.us
     role: mcp
     canonical: true
-  - host: gemini.your-domain.example
+  - host: codex.ellis-aegis.us
     role: mcp
     canonical: true
-  - host: antigravity.your-domain.example
+  - host: cursor.ellis-aegis.us
     role: mcp
     canonical: true
-  - host: antigrativy.your-domain.example
+  - host: gemini.ellis-aegis.us
+    role: mcp
+    canonical: true
+  - host: antigravity.ellis-aegis.us
+    role: mcp
+    canonical: true
+  - host: antigrativy.ellis-aegis.us
     role: mcp_alias
     canonical: false
-    redirect_to: antigravity.your-domain.example
+    redirect_to: antigravity.ellis-aegis.us
     redirect_enabled: false   # flip to true if Joe wants 301; default false to preserve typo-safe behavior
+  - host: hitch.guru
+    role: project_lane
+    canonical: true
+  - host: kevis.online
+    role: project_lane
+    canonical: true
 
 # Allowed methods + paths per role
 allow_matrix:
   mcp:
+    - path: "/"
+      methods: ["GET", "HEAD", "OPTIONS"]
+    - path: "/index.html"
+      methods: ["GET", "HEAD", "OPTIONS"]
+    - path_prefix: "/assets/"
+      methods: ["GET", "HEAD", "OPTIONS"]
+    - path: "/favicon.ico"
+      methods: ["GET", "HEAD", "OPTIONS"]
     - path: "/mcp"
       methods: ["POST", "GET", "OPTIONS"]
     - path_prefix: "/turn/"
       methods: ["POST", "OPTIONS"]
     - path_prefix: "/audit/"
       methods: ["GET", "OPTIONS"]
+    - path_prefix: "/api/"
+      methods: ["GET", "POST", "OPTIONS"]
     - path: "/healthz"
       methods: ["GET"]
 
 # WAF custom rules (phase: http_request_firewall_custom)
+# Keep this list compact. Some zones only allow five custom WAF rules, and one
+# slot can already be occupied by legacy Cloudflare posture.
 waf_rules:
-  - description: "MCP-fleet :: block disallowed methods on /mcp"
-    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and http.request.uri.path eq "/mcp" and not http.request.method in {"POST" "GET" "OPTIONS"})'
-    action: block
-
-  - description: "MCP-fleet :: block disallowed methods on /turn/*"
-    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and starts_with(http.request.uri.path, "/turn/") and not http.request.method in {"POST" "OPTIONS"})'
+  - description: "MCP-fleet :: block disallowed methods on protected endpoints"
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (((http.request.uri.path eq "/" or http.request.uri.path eq "/index.html" or starts_with(http.request.uri.path, "/assets/") or http.request.uri.path eq "/favicon.ico") and not http.request.method in {"GET" "HEAD" "OPTIONS"}) or (http.request.uri.path eq "/mcp" and not http.request.method in {"POST" "GET" "OPTIONS"}) or (starts_with(http.request.uri.path, "/turn/") and not http.request.method in {"POST" "OPTIONS"}) or (starts_with(http.request.uri.path, "/audit/") and not http.request.method in {"GET" "OPTIONS"}) or (starts_with(http.request.uri.path, "/api/") and not http.request.method in {"GET" "POST" "OPTIONS"})))'
     action: block
 
   - description: "MCP-fleet :: block unknown paths"
-    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and not (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or http.request.uri.path eq "/healthz"))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and not (http.request.uri.path eq "/" or http.request.uri.path eq "/index.html" or starts_with(http.request.uri.path, "/assets/") or http.request.uri.path eq "/favicon.ico" or http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/") or http.request.uri.path eq "/healthz"))'
     action: block
 
-  - description: "MCP-fleet :: require Authorization header on /mcp + /turn/*"
-    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")) and http.request.method ne "OPTIONS" and not http.request.headers["authorization"][0] matches "^Bearer\\s.+")'
+  - description: "MCP-fleet :: require operator auth on /mcp + /turn/*"
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")) and http.request.method ne "OPTIONS" and len(http.request.headers["authorization"]) eq 0 and len(http.request.headers["x-ellis-aegis-token"]) eq 0)'
     action: block
 
 # Rate limiting (phase: http_ratelimit)
 rate_limits:
-  - description: "MCP-fleet :: /mcp soft cap"
-    match_expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and http.request.uri.path eq "/mcp")'
-    requests_per_period: 120
-    period_seconds: 60
-    mitigation_timeout_seconds: 60
-    action: managed_challenge
-
-  - description: "MCP-fleet :: /turn/* hard cap"
-    match_expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and starts_with(http.request.uri.path, "/turn/"))'
-    requests_per_period: 60
-    period_seconds: 60
-    mitigation_timeout_seconds: 120
+  - description: "MCP-fleet :: control-plane burst cap"
+    match_expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")))'
+    requests_per_period: 20
+    period_seconds: 10
+    mitigation_timeout_seconds: 10
     action: block
 
 # Cache rules (phase: http_request_cache_settings)
 cache_rules:
   - description: "MCP-fleet :: bypass cache on dynamic endpoints"
-    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/")))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/") or starts_with(http.request.uri.path, "/audit/") or starts_with(http.request.uri.path, "/api/")))'
     cache: bypass
 
 # Bot management posture
@@ -83,7 +96,7 @@ bot_management:
     likely_automated: managed_challenge
   mcp_exemption:
     description: "MCP-fleet :: skip bot fight on /mcp + /turn/* (clients are bots by design)"
-    expression: '(http.host in {"codex.your-domain.example" "cursor.your-domain.example" "gemini.your-domain.example" "antigravity.your-domain.example" "antigrativy.your-domain.example"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")))'
+    expression: '(http.host in {"mj.ellis-aegis.us" "mcp.ellis-aegis.us" "codex.ellis-aegis.us" "cursor.ellis-aegis.us" "gemini.ellis-aegis.us" "antigravity.ellis-aegis.us" "antigrativy.ellis-aegis.us" "hitch.guru" "kevis.online"} and (http.request.uri.path eq "/mcp" or starts_with(http.request.uri.path, "/turn/")))'
     action: skip
     skip_phases: [http_request_firewall_managed]
 

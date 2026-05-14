@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ellis-aegis.us/schemas/mj-mcp/infrastructure-connections.schema.json",
+  "title": "MJ MCP Infrastructure Connections",
+  "type": "object",
+  "required": ["version", "authority", "lanes"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "authority": {
+      "type": "object",
+      "required": ["account", "zone", "worker", "entrypoints"],
+      "additionalProperties": false,
+      "properties": {
+        "account": { "type": "string" },
+        "zone": { "type": "string" },
+        "worker": { "type": "string" },
+        "entrypoints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "lanes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "lane",
+          "status",
+          "entrypoint",
+          "requiredSecrets",
+          "requiredHeaders",
+          "allowedCapabilities",
+          "auditMode"
+        ],
+          "additionalProperties": false,
+          "properties": {
+            "lane": { "type": "string", "pattern": "^mj-[a-z0-9-]+$" },
+            "status": { "type": "string" },
+            "entrypoint": { "type": "string" },
+            "consoleConnector": { "type": "string" },
+            "connectionMode": { "type": "string" },
+            "mcpTransport": { "type": "string" },
+            "handoff": { "type": "string" },
+            "activation": { "type": "string" },
+            "notes": { "type": "string" },
+            "requiredSecrets": {
+              "type": "array",
+              "items": { "type": "string" }
+          },
+          "requiredHeaders": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "allowedCapabilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "auditMode": { "type": "string", "enum": ["required", "optional", "disabled"] }
+        }
+      }
+    }
+  }
+}
