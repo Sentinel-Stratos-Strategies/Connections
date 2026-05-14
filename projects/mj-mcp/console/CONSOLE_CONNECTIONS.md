@@ -73,3 +73,9 @@ Zed / Cursor / Local Models
 ```
 
 The mini-lane manifest source of truth lives in `projects/mj-mcp/lanes/**/lane.manifest.json`. The deployed runtime registry mirror lives in `projects/mj-mcp-layer/mcp-layer/src/console-lanes.ts`.
+
+Detailed dashboard-auth requirements and the per-lane connection matrix live in:
+
+```text
+projects/mj-mcp-layer/docs/handoffs/MJ-DASHBOARD-AUTH-AND-MINI-LANE-CONNECTIONS.md
+```
