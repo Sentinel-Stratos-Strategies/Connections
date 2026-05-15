@@ -150,12 +150,17 @@ describe("control-plane policy", () => {
 
     const body = await readJson(response);
     const lanes = body.lanes as Array<Record<string, unknown>>;
+    const skipped = body.skipped as Array<Record<string, unknown>>;
     assert.equal(response.status, 200);
     assert.equal(body.count, lanes.length);
-    assert.ok(lanes.length >= 30);
+    assert.equal(body.count, 31);
     assert.ok(lanes.some((lane) => lane.lane === "mj-cloudflare"));
     assert.ok(lanes.some((lane) => lane.lane === "mj-codex-security"));
     assert.ok(lanes.some((lane) => lane.lane === "mj-build-web"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-cursor"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-local-models"));
+    assert.equal(lanes.some((lane) => lane.lane === "mj-railway"), false);
+    assert.deepEqual(skipped.map((lane) => lane.lane), ["mj-computer", "mj-gadget", "mj-railway"]);
     assert.equal((body.authority as Record<string, unknown>).worker, "mj-edge");
   });
 

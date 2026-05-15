@@ -12,6 +12,11 @@ export interface ConsoleLaneConnection {
   status: string;
 }
 
+export interface SkippedConsoleLane {
+  lane: string;
+  reason: string;
+}
+
 export const CONSOLE_LANE_AUTHORITY = {
   account: "5b94eedaff8fb3ccaa1b607f57963e10",
   zone: "ellis-aegis.us",
@@ -67,16 +72,6 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     consoleConnector: "chrome",
     entrypoint: "https://mcp.ellis-aegis.us/mcp",
     lane: "mj-chrome",
-    requiredSecrets: ["OPERATOR_TOKEN"],
-    status: "connector_install_required",
-  }),
-  lane({
-    activation: "Install/use computer-use only for explicit desktop settings or visual QA tasks.",
-    allowedCapabilities: ["mcp.admin", "forensic.read"],
-    connectionMode: "optional_local_plugin",
-    consoleConnector: "Computer",
-    entrypoint: "https://mcp.ellis-aegis.us/mcp",
-    lane: "mj-computer",
     requiredSecrets: ["OPERATOR_TOKEN"],
     status: "connector_install_required",
   }),
@@ -331,26 +326,6 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     status: "ready_for_connector_scope",
   }),
   lane({
-    activation: "Use Railway for backend service and preview deployment projections.",
-    allowedCapabilities: ["cloud.ops", "forensic.read"],
-    connectionMode: "api_token",
-    consoleConnector: "Railway",
-    entrypoint: "https://mcp.ellis-aegis.us/mcp",
-    lane: "mj-railway",
-    requiredSecrets: ["RAILWAY_TOKEN"],
-    status: "ready_for_api_token",
-  }),
-  lane({
-    activation: "Use Gadget for approved app and backend builder workflows.",
-    allowedCapabilities: ["mcp.admin", "cloud.ops"],
-    connectionMode: "api_token",
-    consoleConnector: "Gadget",
-    entrypoint: "https://mcp.ellis-aegis.us/mcp",
-    lane: "mj-gadget",
-    requiredSecrets: ["GADGET_API_KEY"],
-    status: "ready_for_api_token",
-  }),
-  lane({
     activation: "Connect Zed as an approved remote MCP operator.",
     allowedCapabilities: ["mcp.admin", "script.run", "forensic.read"],
     connectionMode: "remote_mcp_operator",
@@ -380,4 +355,10 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     requiredSecrets: ["local Ollama models"],
     status: "ready_for_local_bridge",
   }),
+];
+
+export const SKIPPED_CONSOLE_LANES: SkippedConsoleLane[] = [
+  { lane: "mj-computer", reason: "console plugin or Stratos_Tools application not observed" },
+  { lane: "mj-gadget", reason: "console plugin or Stratos_Tools application not observed" },
+  { lane: "mj-railway", reason: "console plugin or Stratos_Tools application not observed" },
 ];

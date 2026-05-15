@@ -1,4 +1,4 @@
-import { CONSOLE_LANE_AUTHORITY, CONSOLE_LANES } from "./console-lanes";
+import { CONSOLE_LANE_AUTHORITY, CONSOLE_LANES, SKIPPED_CONSOLE_LANES } from "./console-lanes";
 
 interface WatcherJob {
   actor: string;
@@ -472,6 +472,7 @@ async function handleConsoleLanes(request: Request, env: Env, ctx: ExecutionCont
       denyByDefault: POLICY.deny_by_default,
       requiredHeaders: POLICY.required_headers,
     },
+    skipped: SKIPPED_CONSOLE_LANES,
   }, { env, request });
 }
 
