@@ -153,7 +153,7 @@ describe("control-plane policy", () => {
     const skipped = body.skipped as Array<Record<string, unknown>>;
     assert.equal(response.status, 200);
     assert.equal(body.count, lanes.length);
-    assert.equal(body.count, 36);
+    assert.equal(body.count, 40);
     assert.ok(lanes.some((lane) => lane.lane === "mj-cloudflare"));
     assert.ok(lanes.some((lane) => lane.lane === "mj-codex-security"));
     assert.ok(lanes.some((lane) => lane.lane === "mj-build-web"));
@@ -162,6 +162,10 @@ describe("control-plane policy", () => {
     assert.ok(lanes.some((lane) => lane.lane === "mj-marvin"));
     assert.ok(lanes.some((lane) => lane.lane === "mj-harbor"));
     assert.ok(lanes.some((lane) => lane.lane === "mj-diggs"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-hitch"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-hitch-mcp"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-kevis-mcp"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-perplexity"));
     assert.equal(lanes.some((lane) => lane.lane === "mj-railway"), false);
     assert.deepEqual(skipped.map((lane) => lane.lane), ["mj-computer", "mj-gadget", "mj-railway"]);
     assert.equal((body.authority as Record<string, unknown>).worker, "mj-edge");

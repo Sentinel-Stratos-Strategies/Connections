@@ -8,6 +8,7 @@
     "deploy": "wrangler deploy",
     "manifest:deployment": "node scripts/write-deployment-manifest.mjs",
     "smoke": "node scripts/smoke-control-plane.mjs",
+    "smoke:enterprise-lanes": "node scripts/smoke-enterprise-lanes.mjs",
     "tail": "wrangler tail",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit"
