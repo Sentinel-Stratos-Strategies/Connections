@@ -13,7 +13,7 @@
 | Area | Change |
 | --- | --- |
 | Console lanes | Added **`mj-antigravity`** and **`mj-orbstack`** to `CONSOLE_LANES` and `infrastructure-connections.json`. |
-| Project lanes | Added **`kevis-mcp`** and **`hitch-mcp`** to `infrastructure-connections.json`. |
+| Project lanes | Added **`mj-kevis-mcp`** and **`mj-hitch-mcp`** to `infrastructure-connections.json`. |
 | Edge routing | **`mj-edge-routing.yaml`** aligned with live split-worker reality (Codex served by **`ellis-aegis-control-plane`**). |
 | Tests | **`control-plane-policy.test.ts`** updated to expect **36** lanes; **`npm test`** passes. |
 | Git | Committed on branch **`verify/mj-edge-routes-2026-05-17`** (includes previously untracked lane definitions). |

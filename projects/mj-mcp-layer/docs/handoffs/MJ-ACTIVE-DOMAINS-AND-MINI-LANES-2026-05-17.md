@@ -38,6 +38,6 @@ Post-deployment verification of `mj-edge` and `ellis-aegis-control-plane` using 
 - **Main MCP Tunnel (`https://mcp.ellis-aegis.us/mcp`):** Returns `protocol: mcp` (Pass).
 - **Console Lane Registry (`https://api.ellis-aegis.us/api/console/lanes`):** Returns `count: 36` (Pass).
   - New lanes verified: `mj-antigravity`, `mj-orbstack`.
-  - Infrastructure lanes added: `kevis-mcp`, `hitch-mcp` (in `infrastructure-connections.json`).
+  - Infrastructure lanes added: `mj-kevis-mcp`, `mj-hitch-mcp` (in `infrastructure-connections.json`).
 
 **Gemini / agent pickup:** [GEMINI-HANDOFF-MJ-LAYER-2026-05-17.md](./GEMINI-HANDOFF-MJ-LAYER-2026-05-17.md)

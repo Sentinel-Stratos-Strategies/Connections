@@ -494,7 +494,7 @@
       "activation": "OrbStack is the local container and VM substrate; use the local bridge for governed host-local operations."
     },
     {
-      "lane": "kevis-mcp",
+      "lane": "mj-kevis-mcp",
       "status": "ready_for_operator_token",
       "entrypoint": "https://kevis.online/mcp",
       "consoleConnector": "Kevis Project",
@@ -507,7 +507,7 @@
       "activation": "Primary MCP endpoint for the Kevis project domain."
     },
     {
-      "lane": "hitch-mcp",
+      "lane": "mj-hitch-mcp",
       "status": "ready_for_operator_token",
       "entrypoint": "https://hitch.guru/mcp",
       "consoleConnector": "Hitch Project",
@@ -518,6 +518,71 @@
       "allowedCapabilities": ["mcp.admin", "forensic.read"],
       "auditMode": "required",
       "activation": "Primary MCP endpoint for the Hitch project domain."
+    },
+    {
+      "lane": "mj-marvin",
+      "status": "ready_for_local_bridge",
+      "entrypoint": "http://127.0.0.1:11437/mcp",
+      "consoleConnector": "Marvin",
+      "connectionMode": "local_bridge",
+      "mcpTransport": "http",
+      "requiredSecrets": ["local MJ persona bridge token"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["script.run", "forensic.read"],
+      "auditMode": "required",
+      "activation": "Local Qwen persona MCP (tenant local-marvin); must not be exposed publicly."
+    },
+    {
+      "lane": "mj-harbor",
+      "status": "ready_for_local_bridge",
+      "entrypoint": "http://127.0.0.1:11437/mcp",
+      "consoleConnector": "Harbor",
+      "connectionMode": "local_bridge",
+      "mcpTransport": "http",
+      "requiredSecrets": ["local MJ persona bridge token"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["script.run", "forensic.read"],
+      "auditMode": "required",
+      "activation": "Local Mistral-Nemo persona MCP (tenant local-harbor); must not be exposed publicly."
+    },
+    {
+      "lane": "mj-diggs",
+      "status": "ready_for_local_bridge",
+      "entrypoint": "http://127.0.0.1:11437/mcp",
+      "consoleConnector": "Dick Diggs",
+      "connectionMode": "local_bridge",
+      "mcpTransport": "http",
+      "requiredSecrets": ["local MJ persona bridge token"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["script.run", "forensic.read"],
+      "auditMode": "required",
+      "activation": "Local Gemma persona MCP (tenant local-diggs); must not be exposed publicly."
+    },
+    {
+      "lane": "mj-hitch",
+      "status": "ready_for_oauth_or_connector",
+      "entrypoint": "https://hitch.ellis-aegis.us/mcp",
+      "consoleConnector": "Hitch Gadget",
+      "connectionMode": "oauth_connector",
+      "mcpTransport": "http",
+      "requiredSecrets": ["Gadget Hitch OAuth session or approved connector"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["mcp.admin", "forensic.read"],
+      "auditMode": "required",
+      "activation": "Hitch Gadget integration lane; OAuth PKCE per lane manifest."
+    },
+    {
+      "lane": "mj-perplexity",
+      "status": "ready_for_api_token",
+      "entrypoint": "https://mcp.ellis-aegis.us/mcp",
+      "consoleConnector": "Perplexity",
+      "connectionMode": "api_or_connector",
+      "mcpTransport": "http",
+      "requiredSecrets": ["PPLX_API_KEY or approved Perplexity connector"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["model.route", "tool.call_approved", "forensic.read"],
+      "auditMode": "required",
+      "activation": "Perplexity Sonar via governed MJ proxy; API key stays in Worker secrets."
     }
   ]
 }
