@@ -1,0 +1,17 @@
+version: 1
+tenant_id: hitch
+display_name: Hitch
+domains:
+  - hitch.guru
+  - hitch.ellis-aegis.us
+capabilities:
+  - script.run
+  - forensic.read
+  - forensic.export
+  - cloud.ops
+  - mcp.admin
+policy_set: hitch-default-v2
+limits:
+  mcp_rpm: 120
+  turn_rpm: 60
+  export_rph: 20

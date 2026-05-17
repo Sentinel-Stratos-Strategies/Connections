@@ -1,0 +1,37 @@
+{
+  "lane": "mj-vercel",
+  "platform": "vercel",
+  "purpose": "Manage approved frontend project metadata, preview deployments, deployment status, logs, and production deploy gates.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "deployment_projection",
+  "allowedActions": [
+    "project.read",
+    "deployment.read",
+    "deployment.create_preview",
+    "deployment.logs_read",
+    "domain.read",
+    "env.read_metadata"
+  ],
+  "deniedActions": [
+    "project.delete",
+    "domain.transfer",
+    "env.read_secret_values",
+    "permission.escalate",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "deployment.promote_production",
+    "env.update",
+    "domain.update",
+    "project.settings_update"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_project_scope_only",
+    "externalWrite": "preview_deploys_allowed_production_requires_approval",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

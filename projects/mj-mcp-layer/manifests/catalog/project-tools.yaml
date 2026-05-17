@@ -1,0 +1,62 @@
+version: 1
+kind: mj_connections_project_tools
+updated: "2026-05-17"
+paths_relative_to: repository_root
+human_readable: projects/mj-mcp-layer/docs/references/PROJECT_TOOL_MANIFEST.md
+
+host_requirements:
+  - tool: node
+    version_hint: ">=20"
+  - tool: npm
+  - tool: bash
+  - tool: curl
+  - tool: git
+  - tool: gh
+    optional: true
+    rationale: GitHub Actions and gh CLI for MJ Layer workflows.
+
+npm_packages:
+  - path: projects/mj-mcp-layer/mcp-layer
+    name: mj-mcp-layer
+    role: mj-edge Cloudflare Worker
+    primary_scripts:
+      - dev
+      - deploy
+      - test
+      - typecheck
+      - smoke
+      - manifest:deployment
+      - tail
+  - path: projects/mj-mcp-layer/platform
+    name: "@mj-mcp/platform"
+    role: Platform CLI / orchestration library (mcp-cli)
+    primary_scripts:
+      - build
+      - test
+      - typecheck
+      - cli
+  - path: projects/mj-mcp-layer/frontend
+    name: "@mj-layer/control-panel"
+    role: Vite + React control panel
+    primary_scripts:
+      - dev
+      - build
+      - preview
+      - typecheck
+
+wrangler_configs:
+  - projects/mj-mcp-layer/mcp-layer/wrangler.jsonc
+
+github_workflows:
+  - .github/workflows/mj-layer-deploy.yml
+  - .github/workflows/mj-layer-scan.yml
+  - .github/workflows/mj-layer-canary.yml
+
+lane_definitions:
+  glob: projects/mj-mcp/lanes/*/lane.manifest.json
+  identities: projects/mj-mcp/lanes/lane-identities.v1.json
+  connections_catalog: projects/mj-mcp/connections/infrastructure-connections.json
+
+sibling_repo:
+  name: Cloudflare-ellis-aegis
+  note: Control plane, MUA, MJ Brady, security-agent, hardening scripts.

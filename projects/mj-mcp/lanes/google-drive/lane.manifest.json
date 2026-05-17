@@ -1,0 +1,36 @@
+{
+  "lane": "mj-google-drive",
+  "platform": "google-drive",
+  "purpose": "Coordinate approved Google Drive, Docs, Sheets, and Slides operations as document-backed MJ projections.",
+  "owner": "Sentinel",
+  "authMode": "oauth",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "drive.search_approved",
+    "doc.read",
+    "doc.comment",
+    "sheet.read",
+    "slide.read",
+    "doc.create_approved"
+  ],
+  "deniedActions": [
+    "drive.export_all",
+    "permission.escalate",
+    "external_share_unapproved",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "doc.update",
+    "sheet.update",
+    "slide.update",
+    "external_share"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_drive_items_only",
+    "externalWrite": "approved_document_actions_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

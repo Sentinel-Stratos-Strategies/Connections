@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ellis-aegis.us/schemas/mj-mcp/audit-event.schema.json",
+  "title": "MJ MCP Audit Event",
+  "type": "object",
+  "required": ["eventId", "createdAt", "actor", "lane", "action", "decision", "resource"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "actor": { "type": "string" },
+    "source": { "type": "string" },
+    "lane": { "type": "string" },
+    "action": { "type": "string" },
+    "decision": {
+      "type": "string",
+      "enum": ["allow", "allow_with_audit", "deny", "require_approval", "quarantine", "record"]
+    },
+    "resource": { "type": "string" },
+    "reasonCode": { "type": "string" },
+    "risk": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+    "payloadHash": { "type": "string" },
+    "projectionRef": { "type": "string" },
+    "metadata": { "type": "object" }
+  }
+}

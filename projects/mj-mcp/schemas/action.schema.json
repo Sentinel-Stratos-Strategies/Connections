@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ellis-aegis.us/schemas/mj-mcp/action.schema.json",
+  "title": "MJ MCP Action Envelope",
+  "type": "object",
+  "required": ["actor", "source", "lane", "action", "risk", "requiresApproval"],
+  "additionalProperties": false,
+  "properties": {
+    "actor": { "type": "string" },
+    "source": {
+      "type": "string",
+      "enum": ["codex", "chatgpt", "cli", "ui", "automation", "github-actions"]
+    },
+    "lane": { "type": "string", "pattern": "^mj-[a-z0-9-]+$" },
+    "action": { "type": "string" },
+    "resource": { "type": "string" },
+    "payloadRef": { "type": "string" },
+    "risk": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+    "requiresApproval": { "type": "boolean" },
+    "approvalRef": { "type": "string" },
+    "metadata": { "type": "object" }
+  }
+}

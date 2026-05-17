@@ -1,0 +1,16 @@
+version: 1
+tenant_id: kevis
+display_name: Kevis
+domains:
+  - kevis.online
+capabilities:
+  - script.run
+  - forensic.read
+  - forensic.export
+  - cloud.ops
+  - mcp.admin
+policy_set: kevis-default-v2
+limits:
+  mcp_rpm: 120
+  turn_rpm: 60
+  export_rph: 20

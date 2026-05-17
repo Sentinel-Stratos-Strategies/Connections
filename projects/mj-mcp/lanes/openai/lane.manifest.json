@@ -1,0 +1,38 @@
+{
+  "lane": "mj-openai",
+  "platform": "openai",
+  "purpose": "Use approved OpenAI API and ChatGPT-facing workflows for reasoning, agent kits, responses, tool orchestration, and retrieval-backed work.",
+  "owner": "Sentinel",
+  "authMode": "api_key",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "responses.create",
+    "agent_kit.validate",
+    "agent_kit.push",
+    "thread_kit.push",
+    "widget_kit.push",
+    "file_search.query",
+    "tool.call"
+  ],
+  "deniedActions": [
+    "secret.read",
+    "organization.billing.modify",
+    "permission.escalate",
+    "hidden_endpoint.call",
+    "unauthorized_ui_automation"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "production_agent_update",
+    "tool_schema_update",
+    "external_mcp_enable",
+    "bulk_file_ingest"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_project_scope_only",
+    "externalWrite": "official_api_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}
