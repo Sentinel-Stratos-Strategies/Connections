@@ -1,0 +1,24 @@
+{
+  "generated": "Wed Apr  8 00:29:07 CDT 2026",
+  "harbor_core_ip": "10.13.37.1",
+  "shortcuts": [
+    {
+      "name": "Sentinel Stratos \u00b7 Harbor API Check-In",
+      "file": "harbor-core-api-tether.shortcut",
+      "unsigned": "harbor-core-api-tether.unsigned.shortcut",
+      "import_url": "shortcuts://import-shortcut?url=http://10.13.37.1:9999/harbor-core-api-tether.shortcut&name=Sentinel%20Stratos%20%C2%B7%20Harbor%20API%20Check-In&silent=true"
+    },
+    {
+      "name": "Sentinel Stratos \u00b7 Mac SSH Wake",
+      "file": "ssh-server-wake.shortcut",
+      "unsigned": "ssh-server-wake.unsigned.shortcut",
+      "import_url": "shortcuts://import-shortcut?url=http://10.13.37.1:9999/ssh-server-wake.shortcut&name=Sentinel%20Stratos%20%C2%B7%20Mac%20SSH%20Wake&silent=true"
+    },
+    {
+      "name": "Sentinel Stratos \u00b7 On-Device Agent",
+      "file": "gemini-ashell-bypass.shortcut",
+      "unsigned": "gemini-ashell-bypass.unsigned.shortcut",
+      "import_url": "shortcuts://import-shortcut?url=http://10.13.37.1:9999/gemini-ashell-bypass.shortcut&name=Sentinel%20Stratos%20%C2%B7%20On-Device%20Agent&silent=true"
+    }
+  ]
+}

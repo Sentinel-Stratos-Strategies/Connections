@@ -1,0 +1,51 @@
+{
+  "lane": "mj-perplexity",
+  "platform": "perplexity",
+  "purpose": "Ground answers and research flows in Perplexity (Sonar search, chat completions, async workloads) with citations — API-key gated, projection-only writes to MUA memory.",
+  "owner": "Sentinel",
+  "authMode": "api_key",
+  "envVarHint": "PPLX_API_KEY",
+  "operatorProxy": {
+    "baseUrlRelative": "/api/connectors/perplexity",
+    "routes": {
+      "perplexity.chat.completions": "POST /chat/completions (OpenAI-compatible body forwarded to api.perplexity.ai)",
+      "perplexity.search.query": "POST /search JSON { \"query\", \"model\"? }",
+      "perplexity.model.list": "GET /models",
+      "perplexity.async.*": "501 — use chat/completions",
+      "perplexity.citations.expand": "501 — follow-up completion",
+      "perplexity.usage.read": "501 — use Perplexity dashboard"
+    },
+    "auth": "Requires same operator session as other /api routes (x-ellis-aegis-token). API key is Worker secret, not client-supplied."
+  },
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "search.query",
+    "chat.completions",
+    "async.chat.create",
+    "async.chat.poll",
+    "citations.expand",
+    "models.list",
+    "usage.read"
+  ],
+  "deniedActions": [
+    "secret.read",
+    "organization.billing.modify",
+    "permission.escalate",
+    "account.settings.modify",
+    "unauthorized_ui_automation"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "production_model_change",
+    "connector_trust_boundary_expand",
+    "bulk_search_ingest",
+    "async_job_promote_production"
+  ],
+  "dataBoundaries": {
+    "externalRead": "perplexity_api_scope_only",
+    "externalWrite": "official_api_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

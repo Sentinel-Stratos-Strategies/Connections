@@ -1,0 +1,55 @@
+{
+  "lane": "mj-harbor",
+  "platform": "local-mistral-nemo",
+  "purpose": "Dedicated Harbor lane for Mistral Nemo memory stewardship, operator context, continuity, and accountable long-term Sentinel residency. Harbor is isolated from the other local personas and uses approved memory projections only.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "harbor.infer",
+    "model.health",
+    "memory.projection.read",
+    "memory.persona.snapshot",
+    "memory.diff",
+    "mj.tools.list",
+    "mj.tools.describe",
+    "operator.context.summarize"
+  ],
+  "deniedActions": [
+    "external_api.call",
+    "secret.read",
+    "model.push_external",
+    "file.write_outside_scope",
+    "network.egress_unrestricted",
+    "permission.escalate",
+    "training.run_without_approval",
+    "persona.cross_memory_read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "model.pull",
+    "training.run",
+    "persona.context_overwrite",
+    "bridge.restart",
+    "memory.truth.promote"
+  ],
+  "dataBoundaries": {
+    "externalRead": "denied",
+    "externalWrite": "denied",
+    "truthWrite": "internal_only_after_approval",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  },
+  "mcpConnection": {
+    "transport": "http",
+    "endpoint": "http://127.0.0.1:11437/mcp",
+    "requiredHeaders": {
+      "x-tenant-id": "local-harbor",
+      "x-request-id": "required",
+      "x-policy-version": "mj-local-persona-v1",
+      "x-operator-capability": "forensic.read"
+    },
+    "authHeader": "x-mj-local-models-token",
+    "authScheme": "local_bearer"
+  }
+}
