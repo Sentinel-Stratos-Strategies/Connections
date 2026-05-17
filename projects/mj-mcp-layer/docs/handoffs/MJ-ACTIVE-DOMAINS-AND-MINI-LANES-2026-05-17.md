@@ -30,3 +30,12 @@ The `$CLOUDFLARE_ZONE_ID` unexpanded variable bug has been fixed in `cloudflare/
 
 - **Control-plane package:** `npm ci`, `npm run check`, `npm test` all **PASS**.
 - **Vectorize Index:** `ellis-aegis-mua-memory` creation is **intentionally deferred** as documented in `MUA_LAYER_MASTER_PLAN.md`.
+
+## Authenticated Verification (MJ Layer v2 Deploy)
+
+Post-deployment verification of `mj-edge` and `ellis-aegis-control-plane` using `OPERATOR_TOKEN`:
+
+- **Main MCP Tunnel (`https://mcp.ellis-aegis.us/mcp`):** Returns `protocol: mcp` (Pass).
+- **Console Lane Registry (`https://api.ellis-aegis.us/api/console/lanes`):** Returns `count: 36` (Pass).
+  - New lanes verified: `mj-antigravity`, `mj-orbstack`.
+  - Infrastructure lanes added: `kevis-mcp`, `hitch-mcp` (in `infrastructure-connections.json`).
