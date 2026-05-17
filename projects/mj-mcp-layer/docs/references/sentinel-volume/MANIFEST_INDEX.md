@@ -36,3 +36,8 @@ These files are **reference snapshots** only.
 - `projects/mj-mcp/connections/infrastructure-connections.json`
 
 Parallel Ellis Aegis / MUA / enterprise manifests live in the **Cloudflare-ellis-aegis** repo (`docs/MANIFEST_INDEX.md`).
+
+## Tools & automation catalog (Connections)
+
+- [**`PROJECT_TOOL_MANIFEST.md`**](../PROJECT_TOOL_MANIFEST.md)
+- [`manifests/catalog/project-tools.yaml`](../../../manifests/catalog/project-tools.yaml)

@@ -6,6 +6,12 @@ Snapshots from **`/Volumes/SENTINEL`** for audits and migration context:
 
 - [references/sentinel-volume/MANIFEST_INDEX.md](references/sentinel-volume/MANIFEST_INDEX.md)
 
+## Tools & catalog (push-friendly)
+
+- [references/PROJECT_TOOL_MANIFEST.md](references/PROJECT_TOOL_MANIFEST.md) — Node/npm packages, Wrangler, workflows, lane paths.
+- [manifests/catalog/project-manifest-catalog.yaml](../manifests/catalog/project-manifest-catalog.yaml) — machine-readable index of manifests in **Connections**.
+- [manifests/catalog/project-tools.yaml](../manifests/catalog/project-tools.yaml) — machine-readable tool / workspace list.
+
 ## Routing & zones (authoritative for `mj-edge`)
 
 - [cloudflare/manifests/mj-edge-routing.yaml](../cloudflare/manifests/mj-edge-routing.yaml)
