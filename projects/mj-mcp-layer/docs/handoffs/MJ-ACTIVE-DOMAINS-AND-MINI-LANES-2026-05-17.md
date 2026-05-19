@@ -1,7 +1,7 @@
 # MJ Active Domains And Mini Lanes - 2026-05-17
 
 Verified: 2026-05-17, America/Chicago  
-Live audit: Stratos host `curl` verification, **2026-05-17T18:45Z UTC** (account `5b94eedaff8fb3ccaa1b607f57963e10`).
+Live audit: Stratos host `curl` verification, **2026-05-17T18:45Z UTC** (account `cf-account-id-placeholder`).
 
 ## Live audit (routes + health)
 
