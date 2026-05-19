@@ -6,12 +6,32 @@ source "$SCRIPT_DIR/load-cf-env.sh"
 BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
 ART_DIR="${ART_DIR:-./artifacts}"
 LOG="$ART_DIR/run-log.jsonl"
+DEFERRED="$ART_DIR/control-deferrals.jsonl"
 mkdir -p "$ART_DIR"
 : "${CF_API_TOKEN:?}"
 : "${CF_ZONE_ID:?}"
 API="https://api.cloudflare.com/client/v4"
 
 log_json(){ printf '%s\n' "$1" >> "$LOG"; }
+is_provider_limit(){
+  jq -e '.errors[]?.message | test("exceeded the maximum number of rules|not entitled")' >/dev/null 2>&1 <<<"$1"
+}
+defer_control(){
+  local stage="$1" desc="$2" response="$3"
+  local strict="${HARDENING_STRICT_PROVIDER_LIMITS:-0}"
+  log_json "$(jq -nc --arg stage "$stage" --arg d "$desc" --argjson r "$response" '{stage:$stage,event:"control_deferred",description:$d,response:$r}')"
+  jq -nc \
+    --arg ts "$(date -u +%FT%TZ)" \
+    --arg stage "$stage" \
+    --arg d "$desc" \
+    --argjson strict "$( [[ "$strict" == "1" ]] && echo true || echo false )" \
+    --argjson r "$response" \
+    '{ts:$ts,stage:$stage,event:"provider_limit_deferred",description:$d,strict:$strict,response:$r}' >> "$DEFERRED"
+  if [[ "$strict" == "1" ]]; then
+    return 1
+  fi
+  return 0
+}
 req(){
   local stage="$1" method="$2" path="$3" body="${4:-}"
   local out code ts
@@ -49,8 +69,13 @@ if [[ -z "$existing" ]]; then
     ok=$(echo "$result" | jq -r '.success // false')
     if [[ "$ok" != "true" ]]; then
       echo "  ❌ API rejected bot exemption"
-      log_json "$(jq -nc --argjson r "$result" '{stage:"bot",event:"rule_create_rejected",response:$r}')"
-      ((bot_failures++)) || true
+      if is_provider_limit "$result"; then
+        echo "  ℹ️ provider limit deferred for bot exemption"
+        defer_control "bot" "$desc" "$result" || ((bot_failures++)) || true
+      else
+        log_json "$(jq -nc --argjson r "$result" '{stage:"bot",event:"rule_create_rejected",response:$r}')"
+        ((bot_failures++)) || true
+      fi
     fi
   fi
 else
@@ -68,8 +93,13 @@ else
       ok=$(echo "$result" | jq -r '.success // false')
       if [[ "$ok" != "true" ]]; then
         echo "  ❌ API rejected bot exemption update"
-        log_json "$(jq -nc --argjson r "$result" '{stage:"bot",event:"rule_update_rejected",response:$r}')"
-        ((bot_failures++)) || true
+        if is_provider_limit "$result"; then
+          echo "  ℹ️ provider limit deferred for bot exemption update"
+          defer_control "bot" "$desc" "$result" || ((bot_failures++)) || true
+        else
+          log_json "$(jq -nc --argjson r "$result" '{stage:"bot",event:"rule_update_rejected",response:$r}')"
+          ((bot_failures++)) || true
+        fi
       fi
     fi
   else

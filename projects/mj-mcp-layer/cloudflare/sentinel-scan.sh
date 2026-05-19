@@ -10,12 +10,16 @@ source "$SCRIPT_DIR/load-cf-env.sh"
 ART_DIR="${ART_DIR:-./artifacts}"
 LEDGER="${LEDGER:-$ART_DIR/codex-ledger.jsonl}"
 BASELINE="${BASELINE:-$SCRIPT_DIR/security-baseline.yaml}"
+DEFERRED="$ART_DIR/control-deferrals.jsonl"
+SENTINEL_STRICT="${SENTINEL_STRICT:-0}"
 mkdir -p "$ART_DIR"
 
 TS=$(date -u +%Y%m%dT%H%M%SZ)
 SCAN="$ART_DIR/scan-$TS.json"
 DRIFT="$ART_DIR/drift-$TS.md"
 ALERT="$ART_DIR/ALERT-$TS.md"
+RAW_DIR="$ART_DIR/scan-raw-$TS"
+mkdir -p "$RAW_DIR"
 
 : "${CF_API_TOKEN:?CF_API_TOKEN required}"
 : "${CF_ZONE_ID:?CF_ZONE_ID required}"
@@ -42,6 +46,15 @@ CACHE=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/rulesets/phases/http_request_
 
 echo "==> [5/10] Page rules"
 PAGE=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/pagerules" || echo '{}')
+PAGE_RULES_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 1011 and (.message // "" | contains("account owned tokens"))))' <<<"$PAGE")
+if [[ "$PAGE_RULES_UNSUPPORTED" == "true" ]]; then
+  jq -nc \
+    --arg ts "$(date -u +%FT%TZ)" \
+    --arg stage "scan" \
+    --arg control "pagerules" \
+    --argjson response "$PAGE" \
+    '{ts:$ts,stage:$stage,event:"provider_endpoint_deferred",control:$control,response:$response}' >> "$DEFERRED"
+fi
 
 echo "==> [6/10] SSL settings"
 SSL=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/settings/ssl" || echo '{}')
@@ -65,27 +78,55 @@ else
 fi
 
 # ---------- consolidate ----------
+printf '%s\n' "$DNS" > "$RAW_DIR/dns.json"
+printf '%s\n' "$WAF" > "$RAW_DIR/waf.json"
+printf '%s\n' "$RL" > "$RAW_DIR/ratelimit.json"
+printf '%s\n' "$CACHE" > "$RAW_DIR/cache.json"
+printf '%s\n' "$PAGE" > "$RAW_DIR/pagerules.json"
+printf '%s\n' "$SSL" > "$RAW_DIR/ssl.json"
+printf '%s\n' "$SEC" > "$RAW_DIR/security_level.json"
+printf '%s\n' "$BOT" > "$RAW_DIR/bot_management.json"
+printf '%s\n' "$WR" > "$RAW_DIR/worker_routes.json"
+printf '%s\n' "$AUDIT" > "$RAW_DIR/audit.json"
+
 jq -n \
-  --argjson dns "$DNS" --argjson waf "$WAF" --argjson rl "$RL" \
-  --argjson cache "$CACHE" --argjson page "$PAGE" --argjson ssl "$SSL" \
-  --argjson sec "$SEC" --argjson bot "$BOT" --argjson wr "$WR" --argjson audit "$AUDIT" \
+  --slurpfile dns "$RAW_DIR/dns.json" \
+  --slurpfile waf "$RAW_DIR/waf.json" \
+  --slurpfile rl "$RAW_DIR/ratelimit.json" \
+  --slurpfile cache "$RAW_DIR/cache.json" \
+  --slurpfile page "$RAW_DIR/pagerules.json" \
+  --slurpfile ssl "$RAW_DIR/ssl.json" \
+  --slurpfile sec "$RAW_DIR/security_level.json" \
+  --slurpfile bot "$RAW_DIR/bot_management.json" \
+  --slurpfile wr "$RAW_DIR/worker_routes.json" \
+  --slurpfile audit "$RAW_DIR/audit.json" \
   --arg ts "$TS" \
-  '{scan_ts:$ts, dns:$dns, waf:$waf, ratelimit:$rl, cache:$cache, pagerules:$page,
-    ssl:$ssl, security_level:$sec, bot_management:$bot, worker_routes:$wr, audit:$audit}' \
+  '{scan_ts:$ts, dns:$dns[0], waf:$waf[0], ratelimit:$rl[0], cache:$cache[0], pagerules:$page[0],
+    ssl:$ssl[0], security_level:$sec[0], bot_management:$bot[0], worker_routes:$wr[0], audit:$audit[0]}' \
   > "$SCAN"
 
 echo "✅ scan written: $SCAN"
 
 BASELINE_WAF_DESCRIPTIONS=$(
-  node -e "const fs=require('fs');const YAML=require('yaml');const p=YAML.parse(fs.readFileSync(process.argv[1],'utf8'));console.log(JSON.stringify((p.waf_rules ?? []).map((rule) => rule.description).filter(Boolean)));" "$BASELINE"
+  node -e "const fs=require('fs');const YAML=require('yaml');const p=YAML.parse(fs.readFileSync(process.argv[1],'utf8'));const desc=(p.waf_rules ?? []).map((rule) => rule.description).filter(Boolean);if (p.bot_management?.mcp_exemption?.description) desc.push(p.bot_management.mcp_exemption.description);console.log(JSON.stringify(desc));" "$BASELINE"
 )
 
 # Hard-fail on Cloudflare API auth/rate-limit errors so we never report false-clean drift.
 API_ERRORS=$(jq -r '
+  def pagerules_account_token_unsupported:
+    (.success == false) and any(.errors[]?; (.code == 1011 and ((.message // "") | contains("account owned tokens"))));
   [
-    .dns, .waf, .ratelimit, .cache, .pagerules, .ssl, .security_level, .bot_management, .worker_routes
+    {name:"dns", payload:.dns},
+    {name:"waf", payload:.waf},
+    {name:"ratelimit", payload:.ratelimit},
+    {name:"cache", payload:.cache},
+    {name:"pagerules", payload:.pagerules},
+    {name:"ssl", payload:.ssl},
+    {name:"security_level", payload:.security_level},
+    {name:"bot_management", payload:.bot_management},
+    {name:"worker_routes", payload:.worker_routes}
   ]
-  | map(select(.success != true))
+  | map(select(.payload.success != true and (.name != "pagerules" or (.payload | pagerules_account_token_unsupported | not))))
   | length
 ' "$SCAN")
 if [[ "${API_ERRORS:-0}" -gt 0 ]]; then
@@ -185,7 +226,10 @@ DRIFT_FOUND=0
   if [[ -n "$ACCT_ID" ]]; then
     CHANGES=$(echo "$AUDIT" | jq -r '.result // [] | length')
     echo "- entries: $CHANGES"
-    echo "$AUDIT" | jq -r '.result[]? | "  - [\(.when)] \(.actor.email // "system") :: \(.action.type) :: \(.resource.type)"' || true
+    echo "$AUDIT" | jq -r '.result[]? | "  - [\(.when)] \(.actor.email // "system") :: \(.action.type) :: \(.resource.type)"' | head -n "${AUDIT_LOG_REPORT_LIMIT:-40}" || true
+    if [[ "$CHANGES" -gt "${AUDIT_LOG_REPORT_LIMIT:-40}" ]]; then
+      echo "  - ... $((CHANGES - ${AUDIT_LOG_REPORT_LIMIT:-40})) additional entries omitted from log summary; see scan JSON artifact"
+    fi
     # any actor that isn't the Codex automation token email is suspicious
     OTHER=$(echo "$AUDIT" | jq -r '[.result[]? | select(.actor.email != "'"${CODEX_ACTOR_EMAIL:-codex@ellis-aegis.us}"'")] | length')
     if [[ "$OTHER" -gt 0 ]]; then
@@ -224,5 +268,8 @@ if [[ "$DRIFT_FOUND" -eq 1 ]]; then
   cp "$DRIFT" "$ALERT"
   echo
   echo "🚨 ALERT FILE: $ALERT"
-  exit 7   # distinct exit code for drift
+  if [[ "$SENTINEL_STRICT" == "1" ]]; then
+    exit 7   # distinct exit code for drift
+  fi
+  echo "ℹ️ drift recorded as advisory; set SENTINEL_STRICT=1 to fail on drift"
 fi

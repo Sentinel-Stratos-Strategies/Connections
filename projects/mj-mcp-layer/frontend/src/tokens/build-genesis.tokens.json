@@ -1,0 +1,28 @@
+{
+  "brand": {
+    "void": "#120617",
+    "courtNavy": "#0A1254",
+    "electricBlue": "#211797",
+    "hyperBlue": "#5B6EB9",
+    "aegisCyan": "#00E6D2",
+    "tealGlass": "#297792",
+    "plasmaPurple": "#7C1F77",
+    "rimPink": "#C55895",
+    "warningRose": "#C33C4B",
+    "arenaAmber": "#D08249",
+    "bannerGold": "#EBB663",
+    "chalk": "#FFF0C7"
+  },
+  "semantic": {
+    "background": "var(--bg-void)",
+    "surface": "var(--surface-glass)",
+    "surfaceRaised": "var(--surface-raised)",
+    "border": "var(--border-neon)",
+    "text": "var(--text-primary)",
+    "textMuted": "var(--text-muted)",
+    "accent": "var(--accent-cyan)",
+    "danger": "var(--signal-danger)",
+    "warning": "var(--signal-warning)",
+    "success": "var(--signal-success)"
+  }
+}

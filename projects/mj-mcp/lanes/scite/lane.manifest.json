@@ -1,0 +1,32 @@
+{
+  "lane": "mj-scite",
+  "platform": "scite",
+  "purpose": "Ground enterprise product, security, compliance, and research claims in verifiable scientific sources.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "paper.search",
+    "claim.verify",
+    "citation.summarize",
+    "evidence.map"
+  ],
+  "deniedActions": [
+    "paywalled_content_dump",
+    "citation.fabricate",
+    "secret.read",
+    "policy_control.bypass"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "external_report_publish",
+    "compliance_claim_finalize"
+  ],
+  "dataBoundaries": {
+    "externalRead": "research_query_scope_only",
+    "externalWrite": "citations_and_summaries_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

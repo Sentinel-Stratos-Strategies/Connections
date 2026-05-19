@@ -1,0 +1,22 @@
+actor: local-models
+reset_schedule: daily
+limits:
+  persona_infer:
+    max_per_period: unlimited
+  model_pull:
+    max_per_period: 2
+  training_run:
+    max_per_period: 1
+  context_overwrite:
+    max_per_period: 3
+  bridge_restart:
+    max_per_period: 5
+  destructive_changes:
+    max_per_period: 0
+  external_api_calls:
+    max_per_period: 0
+notes:
+  - "Inference is unlimited — compute is local and cost is zero."
+  - "model.pull requires operator approval — weight downloads are bandwidth-heavy."
+  - "training.run requires approval — unsloth fine-tune jobs are resource-intensive."
+  - "external_api.call is hard-blocked at the lane level — this lane is air-gapped."

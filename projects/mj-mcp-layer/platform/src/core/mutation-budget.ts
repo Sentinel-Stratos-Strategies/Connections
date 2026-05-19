@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { parse as parseYAML, stringify as stringifyYAML } from "yaml";
 import type { ProviderName } from "./types.js";
@@ -248,7 +248,6 @@ export class MutationBudgetEngine {
     const budgets = new Map<string, MutationBudget>();
     if (!existsSync(this.configDir)) return budgets;
 
-    const { readdirSync } = require("node:fs") as typeof import("node:fs");
     for (const file of readdirSync(this.configDir)) {
       if (!file.endsWith(".yaml") && !file.endsWith(".yml")) continue;
       try {

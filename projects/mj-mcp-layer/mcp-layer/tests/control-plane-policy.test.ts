@@ -137,6 +137,62 @@ describe("control-plane policy", () => {
     }
   });
 
+  test("console lane registry is protected and exposes configured mini lanes", async () => {
+    const unauthenticated = await fetchWorker("/api/console/lanes", {
+      headers: authHeaders(),
+    });
+    assert.equal(unauthenticated.status, 403);
+
+    const response = await fetchWorker("/api/console/lanes", {
+      headers: authHeaders({
+        ...policyHeaders(),
+        "x-operator-capability": "forensic.read",
+      }),
+    });
+
+    const body = await readJson(response);
+    const lanes = body.lanes as Array<Record<string, unknown>>;
+    const skipped = body.skipped as Array<Record<string, unknown>>;
+    assert.equal(response.status, 200);
+    assert.equal(body.count, lanes.length);
+    assert.equal(body.count, 40);
+    assert.ok(lanes.some((lane) => lane.lane === "mj-cloudflare"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-codex-security"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-build-web"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-cursor"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-local-models"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-marvin"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-harbor"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-diggs"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-hitch"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-hitch-mcp"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-kevis-mcp"));
+    assert.ok(lanes.some((lane) => lane.lane === "mj-perplexity"));
+    assert.equal(lanes.some((lane) => lane.lane === "mj-railway"), false);
+    assert.deepEqual(skipped.map((lane) => lane.lane), ["mj-computer", "mj-gadget", "mj-railway"]);
+    assert.equal((body.authority as Record<string, unknown>).worker, "mj-edge");
+  });
+
+  test("console lanes are available as an MCP tool", async () => {
+    const response = await fetchWorker("/mcp", {
+      body: JSON.stringify({
+        id: "rpc-lanes",
+        method: "tools/call",
+        params: { name: "console_lanes" },
+      }),
+      headers: authHeaders(policyHeaders()),
+      method: "POST",
+    });
+
+    const body = await readJson(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.id, "rpc-lanes");
+    const result = body.result as Record<string, unknown>;
+    const content = result.content as Array<Record<string, string>>;
+    assert.match(content[0].text, /mj-cloudflare/);
+    assert.match(content[0].text, /mj-build-web/);
+  });
+
   test("health endpoints expose minimal public status payload", async () => {
     const healthzResponse = await fetchWorker("/healthz", { method: "GET" });
     const apiHealthResponse = await fetchWorker("/api/health", { method: "GET" });

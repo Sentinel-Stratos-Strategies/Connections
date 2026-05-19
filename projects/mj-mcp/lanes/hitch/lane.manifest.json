@@ -1,0 +1,68 @@
+{
+  "lane": "mj-hitch",
+  "platform": "gadget_hitch_app",
+  "purpose": "Coordinate approved Hitch app operations across Gadget, GitHub, OpenAI MCP, Cloudflare DNS status, Stripe billing metadata, Stream Chat metadata, and the MJ edge bridge without exposing secrets or production user data.",
+  "owner": "Sentinel",
+  "authMode": "hybrid",
+  "memoryMode": "deployment_projection",
+  "allowedActions": [
+    "github.repo.read",
+    "github.pr.review",
+    "gadget.status.read",
+    "gadget.files.sync_status",
+    "gadget.env.list_keys",
+    "gadget.logs.read_redacted",
+    "gadget.problems.read",
+    "gadget.deploy.plan",
+    "mcp.health.read",
+    "mcp.metadata.verify",
+    "mcp.tools.list",
+    "openai.submission.prepare",
+    "cloudflare.dns.read",
+    "stripe.config.read_metadata",
+    "stream.config.read_metadata",
+    "mj.edge.bridge.health"
+  ],
+  "deniedActions": [
+    "secret.read",
+    "production_user_data.dump",
+    "gadget.production.deploy_unapproved",
+    "gadget.env.secret_value_read",
+    "stripe.customer_data.bulk_read",
+    "oauth.client_secret.read",
+    "mcp.tool.call_as_user_unapproved",
+    "cloudflare.dns.write_unapproved",
+    "openai.submit_without_green_verification",
+    "mj.edge.operator_token_return"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "gadget.env.update",
+    "gadget.deploy.production",
+    "mcp.tool_schema_update",
+    "oauth.redirect_uri_update",
+    "openai.submission",
+    "cloudflare.dns.update",
+    "stripe.webhook_update",
+    "billing.plan_update",
+    "production_data_migration",
+    "mj.edge.bridge_write"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_hitch_project_metadata_and_redacted_logs_only",
+    "externalWrite": "approval_required_for_gadget_cloudflare_openai_stripe_or_mj_mutations",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  },
+  "mcpConnection": {
+    "transport": "streamable-http",
+    "endpoint": "https://hitch.ellis-aegis.us/mcp",
+    "requiredHeaders": {
+      "accept": "application/json, text/event-stream",
+      "content-type": "application/json"
+    },
+    "authHeader": "Authorization",
+    "authScheme": "oauth2_pkce_user"
+  }
+}

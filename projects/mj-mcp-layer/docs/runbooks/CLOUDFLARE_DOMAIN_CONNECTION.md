@@ -28,9 +28,11 @@ The Worker config lives at `projects/mj-mcp-layer/mcp-layer/wrangler.jsonc`.
 
 | Host route | Worker | Purpose |
 |---|---|---|
-| `mj.ellis-aegis.us/*` | `mj-edge` | operator control plane |
-| `mcp.ellis-aegis.us/*` | `mj-edge` | MCP protocol entry |
-| `codex.ellis-aegis.us/*` | `mj-edge` | Codex mini-lane authority |
+| `mj.ellis-aegis.us/*` | `mj-edge` | operator control plane and dashboard |
+| `mcp.ellis-aegis.us/*` | `mj-edge` | MCP protocol entry and dashboard |
+| `codex.ellis-aegis.us/*` | `mj-edge` | Codex mini-lane authority and dashboard |
+
+The public dashboard paths are `/`, `/index.html`, `/assets/*`, and `/favicon.ico`. Protected control-plane paths stay `/mcp`, `/turn/*`, `/audit/*`, `/api/*`, and `/healthz`.
 
 Project lanes stay narrow:
 
@@ -48,12 +50,13 @@ Do not steal apex or app routes from Kevis/Hitch public surfaces.
 
 ## Required GitHub Secrets
 
-- `CF_API_TOKEN`
+- `CLOUDFLARE_API_TOKEN` or `CF_API_TOKEN`
 - `CF_ACCOUNT_ID`
 - `CF_ZONE_ID_ELLIS`
 - `CF_ZONE_ID_HITCH`
 - `CF_ZONE_ID_KEVIS`
 - `OPERATOR_TOKEN`
+- `MCP_LEDGER_KEY`
 - optional `MCP_SMOKE_BASE_URL`, default `https://mcp.ellis-aegis.us`
 
 ## Required Cloudflare API Token Scopes
@@ -71,6 +74,8 @@ Do not steal apex or app routes from Kevis/Hitch public surfaces.
 - Zone > Workers Routes > Edit for those zones
 - Zone > Rulesets > Edit and Zone > Firewall Services > Edit for WAF/rate-limit hardening
 - Zone > Access: Apps and Policies > Edit, if Access is used as the outer identity gate
+
+If Wrangler deploy fails with `kv bindings require kv write perms [code: 10023]`, rotate the deploy token with `Account > Workers KV Storage > Edit` and update `CLOUDFLARE_API_TOKEN`.
 
 ## Host Connection Commands
 
@@ -91,6 +96,7 @@ npm run manifest:deployment
 The smoke must prove:
 
 - `/healthz` returns `200`.
+- `/` returns the MJ Edge dashboard HTML.
 - `/mcp` without MJ policy headers returns `403`.
 - `/mcp` with policy headers plus operator auth returns `200`.
 - `/api/change-request` cannot bypass the policy gate.

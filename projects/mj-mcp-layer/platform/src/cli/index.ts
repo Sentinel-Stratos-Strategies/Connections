@@ -3,10 +3,12 @@
 import { parseArgs } from "node:util";
 import { readFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse as parseYAML } from "yaml";
 import type { ProviderName, SecurityPolicy } from "../core/types.js";
 import type { ProviderAdapter } from "../adapters/provider.interface.js";
 import { CloudflareAdapter } from "../adapters/cloudflare.adapter.js";
+import { GoogleAdapter } from "../adapters/google.adapter.js";
 import { AWSAdapter } from "../adapters/aws.adapter.js";
 import { KubernetesAdapter } from "../adapters/kubernetes.adapter.js";
 import { TerraformAdapter } from "../adapters/terraform.adapter.js";
@@ -25,7 +27,7 @@ import { RollbackEngine } from "../core/rollback-engine.js";
 import { RuntimeVerifier } from "../core/runtime-verifier.js";
 import { DigitalTwin } from "../core/digital-twin.js";
 import { DriftClassifier } from "../automation/drift-classifier.js";
-import { ComplianceAutopilot } from "../automation/compliance-autopilot.js";
+import { ComplianceAutopilot, type ComplianceFramework } from "../automation/compliance-autopilot.js";
 import { MutationBudgetEngine } from "../core/mutation-budget.js";
 import { VisaEngine } from "../core/capability-visa.js";
 import { ReputationEngine } from "../core/reputation-engine.js";
@@ -58,6 +60,7 @@ const COMMANDS = [
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
+type SigningContext = "court" | "visa";
 
 const HELP = `
 mcp-cli — MJ MCP Platform CLI
@@ -106,6 +109,7 @@ OPTIONS:
   --tenant <name>     Tenant ID for intent compilation
   --endpoint <url>    Target endpoint for mutation tests
   --risk <level>      Risk tolerance: low, medium, high
+  --framework <name>  Compliance framework (soc2, pci, hipaa, iso27001) [default: soc2]
 
 EXAMPLES:
   mcp-cli health-check --all-providers
@@ -124,7 +128,7 @@ EXAMPLES:
   mcp-cli visa --name cursor --intent "add_dns_record" --tenant kevis.online
   mcp-cli reputation
   mcp-cli court --intent "protect /mcp from unauthenticated bursts" --tenant kevis
-  mcp-cli compliance-report --format json --from 2026-01-01 --to 2026-06-01
+  mcp-cli compliance-report --framework pci --format json --from 2026-01-01 --to 2026-06-01
   mcp-cli auto-remediate --provider cloudflare
   mcp-cli ledger-view --since "2026-05-01"
 `;
@@ -150,6 +154,7 @@ async function main(): Promise<void> {
       tenant: { type: "string" },
       endpoint: { type: "string" },
       risk: { type: "string" },
+      framework: { type: "string", default: "soc2" },
     },
   });
 
@@ -251,7 +256,7 @@ async function main(): Promise<void> {
       await handleCourt(adapters, ledger, values.intent, values.tenant, values.risk, values.format ?? "text");
       break;
     case "compliance-report":
-      handleComplianceReport(values.from, values.to, values.format ?? "text");
+      handleComplianceReport(values.from, values.to, values.format ?? "text", values.framework);
       break;
     case "change-request":
       await handleChangeRequestSubmit(orchestrator, ledger, adapters, values.file, values.name);
@@ -341,6 +346,23 @@ function buildAdapters(
       }));
     } else {
       if (!quiet) console.warn("[config] Cloudflare: missing CF_API_TOKEN or CF_ZONE_ID");
+    }
+  }
+
+  if (shouldInclude("google")) {
+    const personalCreds = process.env.GOOGLE_PERSONAL_CREDENTIALS;
+    const adminCreds = process.env.GOOGLE_ADMIN_CREDENTIALS;
+    if (personalCreds || adminCreds) {
+      const config: any = {};
+      try {
+        if (personalCreds) config.personalCredentials = JSON.parse(personalCreds);
+        if (adminCreds) config.adminCredentials = JSON.parse(adminCreds);
+        adapters.set("google", new GoogleAdapter(config));
+      } catch (err) {
+        if (!quiet) console.error("[config] Google: failed to parse credentials JSON");
+      }
+    } else {
+      if (!quiet) console.warn("[config] Google: missing GOOGLE_PERSONAL_CREDENTIALS or GOOGLE_ADMIN_CREDENTIALS");
     }
   }
 
@@ -659,7 +681,7 @@ function handleVisaCommand(
   zone?: string,
   format?: string,
 ): void {
-  const signingKey = process.env.MCP_LEDGER_KEY ?? "visa-default-key";
+  const signingKey = resolveSigningKey("visa");
   const visaEngine = new VisaEngine(resolve("artifacts/visa-store.json"), signingKey);
 
   if (agent && scope) {
@@ -721,7 +743,7 @@ async function handleCourt(
   const tester = new MutationTester();
   const rollbackEngine = new RollbackEngine(adapters, ledger);
   const evidenceEngine = new EvidenceEngine(
-    process.env.MCP_LEDGER_KEY ?? "court-key",
+    resolveSigningKey("court"),
     resolve("artifacts"),
   );
   const budgetEngine = new MutationBudgetEngine(
@@ -764,12 +786,14 @@ function handleComplianceReport(
   periodStart?: string,
   periodEnd?: string,
   format?: string,
+  frameworkValue?: string,
 ): void {
   const start = periodStart ?? new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
   const end = periodEnd ?? new Date().toISOString().slice(0, 10);
+  const framework = parseComplianceFramework(frameworkValue);
 
   const autopilot = new ComplianceAutopilot(resolve("manifests/compliance"));
-  const report = autopilot.generateReport("soc2", [], start, end, {
+  const report = autopilot.generateReport(framework, [], start, end, {
     driftScanCount: 0,
     visaCount: 0,
     budgetCheckCount: 0,
@@ -782,6 +806,15 @@ function handleComplianceReport(
   } else {
     console.log(autopilot.formatReport(report));
   }
+}
+
+function parseComplianceFramework(value?: string): ComplianceFramework {
+  const framework = (value ?? "soc2").toLowerCase();
+  if (framework === "soc2" || framework === "pci" || framework === "hipaa" || framework === "iso27001") {
+    return framework;
+  }
+  console.error(`Unsupported compliance framework: ${value}. Expected soc2, pci, hipaa, or iso27001.`);
+  process.exit(1);
 }
 
 async function handleVerify(
@@ -1069,7 +1102,27 @@ function loadPolicyFile(filePath: string): SecurityPolicy {
   return JSON.parse(content) as SecurityPolicy;
 }
 
-main().catch((err) => {
-  console.error("Fatal error:", err);
-  process.exit(1);
-});
+export function resolveSigningKey(
+  context: SigningContext,
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const key = env.MCP_LEDGER_KEY?.trim();
+  if (key) return key;
+
+  if (env.MJ_ALLOW_TEST_SIGNING_KEY === "1") {
+    return `test-only-${context}-key`;
+  }
+
+  throw new Error(`MCP_LEDGER_KEY is required for ${context} signing`);
+}
+
+function isCliEntrypoint(): boolean {
+  return Boolean(process.argv[1]) && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+}
+
+if (isCliEntrypoint()) {
+  main().catch((err) => {
+    console.error("Fatal error:", err);
+    process.exit(1);
+  });
+}

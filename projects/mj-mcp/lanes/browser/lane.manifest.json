@@ -1,0 +1,36 @@
+{
+  "lane": "mj-browser",
+  "platform": "browser-use",
+  "purpose": "Operate approved in-app browser validation, screenshots, navigation, and local web QA for MJ dashboard and console flows.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "browser.open",
+    "browser.navigate",
+    "browser.inspect",
+    "browser.screenshot",
+    "browser.localhost_validate",
+    "ui.flow_verify"
+  ],
+  "deniedActions": [
+    "credential.extract",
+    "cookie.export",
+    "secret.read",
+    "unapproved_purchase",
+    "policy_control.bypass"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "external_form_submit",
+    "authenticated_state_change",
+    "payment_action"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_browser_targets_only",
+    "externalWrite": "explicit_user_triggered_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

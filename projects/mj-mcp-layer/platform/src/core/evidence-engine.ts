@@ -239,6 +239,7 @@ export class EvidenceEngine {
       soc2: ["CC6.1", "CC7.2", "CC8.1"],
       pci: ["6.5", "6.6", "10.1", "10.2"],
       hipaa: ["164.312(a)", "164.312(b)", "164.312(c)"],
+      iso27001: ["A.8.1", "A.8.9"],
     };
 
     const controls = controlMap[framework] ?? [];
@@ -246,7 +247,7 @@ export class EvidenceEngine {
     const missing: string[] = [];
 
     for (const control of controls) {
-      const hasEvidence = bundles.some((b) => b.evidence_satisfied.length > 0);
+      const hasEvidence = bundles.some((bundle) => this.bundleCoversControl(bundle, framework, control));
       if (hasEvidence) covered.push(control);
       else missing.push(control);
     }
@@ -270,6 +271,15 @@ export class EvidenceEngine {
       controls_covered: covered,
       controls_missing: missing,
     };
+  }
+
+  private bundleCoversControl(
+    bundle: EvidenceBundle,
+    framework: string,
+    control: string,
+  ): boolean {
+    const requirements = CONTROL_EVIDENCE_REQUIREMENTS[framework]?.[control] ?? [control];
+    return requirements.some((requirement) => bundle.evidence_satisfied.includes(requirement));
   }
 
   private isRequirementSatisfied(
@@ -305,6 +315,29 @@ export class EvidenceEngine {
       .digest("hex");
   }
 }
+
+const CONTROL_EVIDENCE_REQUIREMENTS: Record<string, Record<string, string[]>> = {
+  soc2: {
+    "CC6.1": ["operator_sign_off", "blast_radius_review"],
+    "CC7.2": ["inventory_before", "inventory_after", "mutation_test_results"],
+    "CC8.1": ["policy_diff", "ledger_entry", "rollback_recipe_tested"],
+  },
+  pci: {
+    "6.5": ["mutation_test_results", "policy_diff"],
+    "6.6": ["policy_diff", "runtime_verification"],
+    "10.1": ["ledger_entry"],
+    "10.2": ["ledger_entry", "inventory_before", "inventory_after"],
+  },
+  hipaa: {
+    "164.312(a)": ["operator_sign_off", "blast_radius_review"],
+    "164.312(b)": ["ledger_entry"],
+    "164.312(c)": ["policy_diff", "rollback_recipe_tested"],
+  },
+  iso27001: {
+    "A.8.1": ["operator_sign_off", "blast_radius_review"],
+    "A.8.9": ["inventory_before", "inventory_after", "policy_diff", "ledger_entry"],
+  },
+};
 
 function canonicalStringify(value: unknown): string {
   if (Array.isArray(value)) {

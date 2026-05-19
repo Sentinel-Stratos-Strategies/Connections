@@ -77,7 +77,7 @@ function git(args) {
   try {
     return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).trim();
   } catch {
-    return "unknown";
+    return null;
   }
 }
 
@@ -114,9 +114,9 @@ const manifest = {
   version: 1,
   generated_at: new Date().toISOString(),
   git: {
-    sha: git(["rev-parse", "HEAD"]),
+    sha: git(["rev-parse", "HEAD"]) ?? "unknown",
     branch: git(["branch", "--show-current"]) || "detached",
-    dirty: Boolean(dirtyStatus),
+    dirty: dirtyStatus !== null && dirtyStatus.length > 0,
   },
   runtime: {
     name: wranglerConfig.name,

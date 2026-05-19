@@ -55,6 +55,11 @@ record(results, "healthz_public", health.status === 200 && health.body?.status =
   status: health.status,
 });
 
+const dashboard = await requestJson(baseUrl, "/");
+record(results, "dashboard_public", dashboard.status === 200 && typeof dashboard.body === "string" && dashboard.body.includes("MJ Edge"), {
+  status: dashboard.status,
+});
+
 const mcpWithoutPolicy = await requestJson(baseUrl, "/mcp");
 record(results, "mcp_requires_policy_headers", mcpWithoutPolicy.status === 403, {
   status: mcpWithoutPolicy.status,
@@ -103,6 +108,22 @@ if (!token) {
   record(results, "audit_query_with_auth", audit.status === 200, {
     status: audit.status,
   });
+
+  const consoleLanes = await requestJson(baseUrl, "/api/console/lanes", {
+    headers: {
+      ...authHeaders,
+      "x-operator-capability": "forensic.read",
+    },
+  });
+  record(
+    results,
+    "console_lanes_with_auth",
+    consoleLanes.status === 200 && Array.isArray(consoleLanes.body?.lanes) && consoleLanes.body.lanes.length >= 40,
+    {
+      laneCount: Array.isArray(consoleLanes.body?.lanes) ? consoleLanes.body.lanes.length : 0,
+      status: consoleLanes.status,
+    },
+  );
 }
 
 const report = {

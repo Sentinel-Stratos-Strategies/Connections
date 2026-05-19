@@ -4,11 +4,17 @@
   "private": true,
   "description": "Workspace utilities for MJ MCP Layer automation scripts.",
   "scripts": {
-    "build": "npm --prefix platform run build",
-    "check": "npm --prefix mcp-layer run typecheck && npm --prefix platform run typecheck",
-    "secrets:check": "node scripts/sync-secret-stores.mjs --dry-run",
-    "secrets:sync": "node scripts/sync-secret-stores.mjs --apply",
-    "test": "npm --prefix mcp-layer test && npm --prefix platform test"
+    "build": "npm --prefix platform run build && npm --prefix frontend run build",
+    "check": "npm run validate:lanes && npm run validate:runtime-lanes && npm --prefix mcp-layer run typecheck && npm --prefix platform run typecheck && npm --prefix frontend run typecheck",
+    "evidence": "node scripts/write-evidence-bundle.mjs",
+    "test": "npm --prefix mcp-layer test && npm --prefix platform test",
+    "validate:lanes": "node scripts/validate-mini-lanes.mjs",
+    "validate:runtime-lanes": "node scripts/validate-runtime-lanes.mjs",
+    "no-stray": "node scripts/assert-no-stray.mjs",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:check": "npm --prefix frontend run typecheck",
+    "mj:golden": "npm run no-stray && npm run check && npm test && npm run build && npm run evidence"
   },
   "dependencies": {
     "yaml": "^2.8.4"

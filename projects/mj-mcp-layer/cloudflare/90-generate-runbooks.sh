@@ -30,6 +30,8 @@ Status timestamp: $(date -u +%FT%TZ)
   - artifacts/diff.md
 - Baseline sheet:
   - artifacts/security-baseline-sheet.md
+- Provider deferrals:
+  - artifacts/control-deferrals.jsonl (present when health, quota, or entitlement limits are advisory)
 - Rotation runbook:
   - artifacts/SECRET-ROTATION-RUNBOOK.md
 MD

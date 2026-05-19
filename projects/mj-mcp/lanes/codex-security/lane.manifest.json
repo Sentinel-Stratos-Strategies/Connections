@@ -1,0 +1,35 @@
+{
+  "lane": "mj-codex-security",
+  "platform": "codex-security",
+  "purpose": "Run approved security scans, threat models, attack-path analysis, finding validation, and safe remediation checks for MJ code and deployments.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "audit_only",
+  "allowedActions": [
+    "security.scan",
+    "threat_model.create",
+    "finding.discover",
+    "finding.validate",
+    "fix.review",
+    "attack_path.analyze"
+  ],
+  "deniedActions": [
+    "exploit.execute_external",
+    "secret.read",
+    "credential.dump",
+    "destructive_test_unapproved"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "fix.apply",
+    "destructive_local_test",
+    "external_target_scan"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_repo_and_deploy_scope_only",
+    "externalWrite": "findings_and_patch_review_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

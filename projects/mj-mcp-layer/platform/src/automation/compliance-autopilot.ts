@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parse as parseYAML } from "yaml";
 import type { EvidenceBundle, AuditExport } from "../core/evidence-engine.js";
@@ -262,7 +262,6 @@ export class ComplianceAutopilot {
     const mappings = new Map<ComplianceFramework, ControlMapping>();
     if (!existsSync(this.mappingsDir)) return mappings;
 
-    const { readdirSync } = require("node:fs") as typeof import("node:fs");
     for (const file of readdirSync(this.mappingsDir)) {
       if (!file.endsWith(".yaml") && !file.endsWith(".yml")) continue;
       try {

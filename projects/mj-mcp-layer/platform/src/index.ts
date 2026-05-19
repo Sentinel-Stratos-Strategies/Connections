@@ -9,6 +9,7 @@ export * from "./core/runtime-verifier.js";
 export * from "./core/digital-twin.js";
 export * from "./core/mutation-budget.js";
 export * from "./core/capability-visa.js";
+export * from "./core/cloud-shell.js";
 export * from "./core/reputation-engine.js";
 export * from "./core/agent-court.js";
 export * from "./adapters/index.js";

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { AWSAdapter } from "../src/adapters/aws.adapter.js";
+import { GoogleAdapter } from "../src/adapters/google.adapter.js";
 import { KubernetesAdapter } from "../src/adapters/kubernetes.adapter.js";
 import { TerraformAdapter } from "../src/adapters/terraform.adapter.js";
 import type { SecurityPolicy } from "../src/core/types.js";
@@ -31,6 +32,7 @@ describe("preview provider adapters", () => {
   test("non-Cloudflare provider scaffolds do not report executed policy changes", async () => {
     const adapters = [
       new AWSAdapter({ region: "us-east-1" }),
+      new GoogleAdapter({}),
       new KubernetesAdapter({ cluster: "dev" }),
       new TerraformAdapter({ workingDir: "." }),
     ];
