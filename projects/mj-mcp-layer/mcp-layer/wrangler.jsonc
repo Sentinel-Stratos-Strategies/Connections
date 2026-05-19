@@ -16,18 +16,13 @@
       "/turn/*",
       "/audit/*",
       "/api/*"
-    ],
+    ]
   },
   // Custom-domain routes are currently owned by the Cloudflare platform Worker
   // `ellis-aegis-control-plane`. Keep this deploy lane on Workers.dev until an
   // explicit route cutover is approved.
   "observability": {
-    "enabled": true,
-  },
-  "assets": {
-    "directory": "public",
-    "binding": "ASSETS",
-    "run_worker_first": true
+    "enabled": true
   },
   "vars": {
     "APP_NAME": "mj-edge",
