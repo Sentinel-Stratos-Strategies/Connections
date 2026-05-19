@@ -12,7 +12,10 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+OUTPUT_FORMATS = ("json", "dashboard")
+
 API_BASE = "https://api.openai.com/v1"
+MAX_KIT_BYTES = 1_000_000
 
 
 class ValidationError(Exception):
@@ -20,6 +23,10 @@ class ValidationError(Exception):
 
 
 def load_json(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise ValidationError(f"File not found: {path}")
+    if path.stat().st_size > MAX_KIT_BYTES:
+        raise ValidationError(f"Kit file exceeds {MAX_KIT_BYTES} bytes")
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
@@ -70,7 +77,7 @@ def post(path: str, body: dict[str, Any], api_key: str) -> dict[str, Any]:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=45) as response:
+        with urllib.request.urlopen(req, timeout=45) as response:  # nosec B310
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         details = exc.read().decode("utf-8", errors="replace")
@@ -81,19 +88,31 @@ def build_agent_tools(payload: dict[str, Any]) -> list[dict[str, Any]]:
     tools: list[dict[str, Any]] = payload.get("tools", [])
     if not isinstance(tools, list):
         raise ValidationError("tools must be a list when provided")
+    for index, tool in enumerate(tools):
+        if not isinstance(tool, dict):
+            raise ValidationError(f"tools[{index}] must be an object")
     return tools
 
 
-def push_agent(payload: dict[str, Any], api_key: str, store: bool) -> None:
-    body: dict[str, Any] = {
-        "model": payload["model"],
-        "instructions": payload["instructions"],
-        "input": payload.get("bootstrap_input", f"Initialize agent profile: {payload['name']}"),
-        "tools": build_agent_tools(payload),
-        "metadata": payload.get("metadata", {}),
-        "store": store,
-    }
-    result = post("/responses", body, api_key)
+def build_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+    metadata = payload.get("metadata", {})
+    if not isinstance(metadata, dict):
+        raise ValidationError("metadata must be an object when provided")
+    return metadata
+
+
+def print_result(result: dict[str, Any], output_format: str) -> None:
+    if output_format == "dashboard":
+        print("MJ Edge Dashboard")
+        print("-" * 40)
+        print(f"Response ID : {result.get('id', 'n/a')}")
+        output_text = result.get("output_text")
+        if output_text:
+            print(f"Output      : {output_text}")
+        else:
+            print("Output      : (empty)")
+        return
+
     print(
         json.dumps(
             {
@@ -105,7 +124,20 @@ def push_agent(payload: dict[str, Any], api_key: str, store: bool) -> None:
     )
 
 
-def push_thread(payload: dict[str, Any], api_key: str, store: bool, previous_response_id: str | None) -> None:
+def push_agent(payload: dict[str, Any], api_key: str, store: bool, output_format: str) -> None:
+    body: dict[str, Any] = {
+        "model": payload["model"],
+        "instructions": payload["instructions"],
+        "input": payload.get("bootstrap_input", f"Initialize agent profile: {payload['name']}"),
+        "tools": build_agent_tools(payload),
+        "metadata": build_metadata(payload),
+        "store": store,
+    }
+    result = post("/responses", body, api_key)
+    print_result(result, output_format)
+
+
+def push_thread(payload: dict[str, Any], api_key: str, store: bool, previous_response_id: str | None, output_format: str) -> None:
     messages = payload["messages"]
     conversation_input = [{"role": item["role"], "content": item["content"]} for item in messages]
 
@@ -118,18 +150,10 @@ def push_thread(payload: dict[str, Any], api_key: str, store: bool, previous_res
         body["previous_response_id"] = previous_response_id
 
     result = post("/responses", body, api_key)
-    print(
-        json.dumps(
-            {
-                "response_id": result.get("id"),
-                "output_text": result.get("output_text"),
-            },
-            indent=2,
-        )
-    )
+    print_result(result, output_format)
 
 
-def push_widget_kit(payload: dict[str, Any], api_key: str, store: bool) -> None:
+def push_widget_kit(payload: dict[str, Any], api_key: str, store: bool, output_format: str) -> None:
     function_tool = {
         "type": "function",
         "name": "register_widget_kit",
@@ -154,10 +178,10 @@ def push_widget_kit(payload: dict[str, Any], api_key: str, store: bool) -> None:
         ),
         "tools": [function_tool],
         "store": store,
-        "metadata": payload.get("metadata", {}),
+        "metadata": build_metadata(payload),
     }
     result = post("/responses", body, api_key)
-    print(json.dumps({"response_id": result.get("id")}, indent=2))
+    print_result(result, output_format)
 
 
 def main(argv: list[str]) -> int:
@@ -171,15 +195,18 @@ def main(argv: list[str]) -> int:
     push_agent_cmd = subparsers.add_parser("push-agent")
     push_agent_cmd.add_argument("--file", required=True)
     push_agent_cmd.add_argument("--no-store", action="store_true")
+    push_agent_cmd.add_argument("--output-format", choices=OUTPUT_FORMATS, default="dashboard")
 
     push_thread_cmd = subparsers.add_parser("push-thread")
     push_thread_cmd.add_argument("--file", required=True)
     push_thread_cmd.add_argument("--previous-response-id")
     push_thread_cmd.add_argument("--no-store", action="store_true")
+    push_thread_cmd.add_argument("--output-format", choices=OUTPUT_FORMATS, default="dashboard")
 
     push_widget_cmd = subparsers.add_parser("push-widget")
     push_widget_cmd.add_argument("--file", required=True)
     push_widget_cmd.add_argument("--no-store", action="store_true")
+    push_widget_cmd.add_argument("--output-format", choices=OUTPUT_FORMATS, default="dashboard")
 
     args = parser.parse_args(argv)
     payload = load_json(Path(args.file))
@@ -203,7 +230,7 @@ def main(argv: list[str]) -> int:
 
     if args.command == "push-agent":
         validate_agent_kit(payload)
-        push_agent(payload, api_key, store=not args.no_store)
+        push_agent(payload, api_key, store=not args.no_store, output_format=args.output_format)
     elif args.command == "push-thread":
         validate_thread_kit(payload)
         push_thread(
@@ -211,10 +238,11 @@ def main(argv: list[str]) -> int:
             api_key,
             store=not args.no_store,
             previous_response_id=args.previous_response_id,
+            output_format=args.output_format,
         )
     elif args.command == "push-widget":
         validate_widget_kit(payload)
-        push_widget_kit(payload, api_key, store=not args.no_store)
+        push_widget_kit(payload, api_key, store=not args.no_store, output_format=args.output_format)
 
     return 0
 

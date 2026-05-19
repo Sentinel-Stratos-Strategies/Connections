@@ -1,0 +1,29 @@
+{
+  "lane": "mj-harbor",
+  "persona": "harbor",
+  "displayName": "Harbor",
+  "model": "mistral-nemo:latest",
+  "bridge": "mj-local-models-bridge",
+  "endpoint": "http://127.0.0.1:11437/mcp",
+  "tool": "harbor.infer",
+  "memory": {
+    "tenantId": "local-harbor",
+    "mode": "projection_only",
+    "localRoot": "/Volumes/SENTINEL/memory/personas/harbor",
+    "cloudflareScope": "r2_projection/personas/harbor",
+    "vectorNamespace": "mj_harbor",
+    "truthPromotion": "approval_required"
+  },
+  "mjToolCatalog": [
+    "console_lanes",
+    "memory.route",
+    "memory.projection.read",
+    "memory.diff",
+    "audit.receipt.read",
+    "operator.context.summarize"
+  ],
+  "sourceContext": [
+    "/Volumes/RESCUE_OS/memory/harbor_context.md",
+    "/Volumes/Stratos_Tools/projects/GENESIS_MEMORY"
+  ]
+}

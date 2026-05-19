@@ -12,6 +12,11 @@ export interface ConsoleLaneConnection {
   status: string;
 }
 
+export interface SkippedConsoleLane {
+  lane: string;
+  reason: string;
+}
+
 export const CONSOLE_LANE_AUTHORITY = {
   account: "5b94eedaff8fb3ccaa1b607f57963e10",
   zone: "ellis-aegis.us",
@@ -20,6 +25,9 @@ export const CONSOLE_LANE_AUTHORITY = {
     "https://mj.ellis-aegis.us",
     "https://mcp.ellis-aegis.us",
     "https://codex.ellis-aegis.us",
+    "https://hitch.ellis-aegis.us",
+    "https://hitch.guru",
+    "https://kevis.online",
   ],
 } as const;
 
@@ -71,16 +79,6 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     status: "connector_install_required",
   }),
   lane({
-    activation: "Install/use computer-use only for explicit desktop settings or visual QA tasks.",
-    allowedCapabilities: ["mcp.admin", "forensic.read"],
-    connectionMode: "optional_local_plugin",
-    consoleConnector: "Computer",
-    entrypoint: "https://mcp.ellis-aegis.us/mcp",
-    lane: "mj-computer",
-    requiredSecrets: ["OPERATOR_TOKEN"],
-    status: "connector_install_required",
-  }),
-  lane({
     activation: "Use Superpowers for plan, TDD, verification, and handoff discipline.",
     allowedCapabilities: ["mcp.admin", "forensic.read"],
     connectionMode: "local_console_connector",
@@ -118,6 +116,16 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     entrypoint: "https://mcp.ellis-aegis.us/mcp",
     lane: "mj-openai",
     requiredSecrets: ["OPENAI_API_KEY or approved OpenAI connector"],
+    status: "ready_for_connector_scope",
+  }),
+  lane({
+    activation: "Use ChatGPT connector flows against the Cloudflare MJ endpoint with operator policy headers.",
+    allowedCapabilities: ["mcp.admin", "tool.call_approved", "forensic.read"],
+    connectionMode: "chatgpt_connector",
+    consoleConnector: "ChatGPT",
+    entrypoint: "https://mcp.ellis-aegis.us/api/genesis/mcp",
+    lane: "mj-chatgpt",
+    requiredSecrets: ["OPERATOR_TOKEN", "AEGIS_TOKEN"],
     status: "ready_for_connector_scope",
   }),
   lane({
@@ -331,23 +339,43 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     status: "ready_for_connector_scope",
   }),
   lane({
-    activation: "Use Railway for backend service and preview deployment projections.",
-    allowedCapabilities: ["cloud.ops", "forensic.read"],
-    connectionMode: "api_token",
-    consoleConnector: "Railway",
-    entrypoint: "https://mcp.ellis-aegis.us/mcp",
-    lane: "mj-railway",
-    requiredSecrets: ["RAILWAY_TOKEN"],
-    status: "ready_for_api_token",
+    activation: "Use the Hitch Gadget lane for approved app operations and OAuth-scoped MCP handoff.",
+    allowedCapabilities: ["mcp.admin", "forensic.read"],
+    connectionMode: "oauth_connector",
+    consoleConnector: "Hitch Gadget",
+    entrypoint: "https://hitch.ellis-aegis.us/mcp",
+    lane: "mj-hitch",
+    requiredSecrets: ["Gadget Hitch OAuth session or approved connector"],
+    status: "ready_for_oauth_or_connector",
   }),
   lane({
-    activation: "Use Gadget for approved app and backend builder workflows.",
-    allowedCapabilities: ["mcp.admin", "cloud.ops"],
-    connectionMode: "api_token",
-    consoleConnector: "Gadget",
+    activation: "Use the Hitch project MCP lane for the hitch.guru project domain through MJ operator policy.",
+    allowedCapabilities: ["mcp.admin", "forensic.read"],
+    connectionMode: "remote_mcp_operator",
+    consoleConnector: "Hitch Project",
+    entrypoint: "https://hitch.guru/mcp",
+    lane: "mj-hitch-mcp",
+    requiredSecrets: ["OPERATOR_TOKEN"],
+    status: "ready_for_operator_token",
+  }),
+  lane({
+    activation: "Use the Kevis project MCP lane for the kevis.online project domain through MJ operator policy.",
+    allowedCapabilities: ["mcp.admin", "forensic.read"],
+    connectionMode: "remote_mcp_operator",
+    consoleConnector: "Kevis Project",
+    entrypoint: "https://kevis.online/mcp",
+    lane: "mj-kevis-mcp",
+    requiredSecrets: ["OPERATOR_TOKEN"],
+    status: "ready_for_operator_token",
+  }),
+  lane({
+    activation: "Use Perplexity Sonar through the governed MJ proxy; API keys stay in Worker or connector secrets.",
+    allowedCapabilities: ["model.route", "tool.call_approved", "forensic.read"],
+    connectionMode: "api_or_connector",
+    consoleConnector: "Perplexity",
     entrypoint: "https://mcp.ellis-aegis.us/mcp",
-    lane: "mj-gadget",
-    requiredSecrets: ["GADGET_API_KEY"],
+    lane: "mj-perplexity",
+    requiredSecrets: ["PPLX_API_KEY or approved Perplexity connector"],
     status: "ready_for_api_token",
   }),
   lane({
@@ -371,6 +399,26 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     status: "ready_for_operator_token",
   }),
   lane({
+    activation: "Connect Antigravity as an approved remote MCP operator.",
+    allowedCapabilities: ["mcp.admin", "script.run", "forensic.read"],
+    connectionMode: "remote_mcp_operator",
+    consoleConnector: "Antigravity",
+    entrypoint: "https://mcp.ellis-aegis.us/mcp",
+    lane: "mj-antigravity",
+    requiredSecrets: ["OPERATOR_TOKEN"],
+    status: "ready_for_operator_token",
+  }),
+  lane({
+    activation: "OrbStack is the local container and VM substrate; use the local bridge for governed host-local operations.",
+    allowedCapabilities: ["mcp.admin", "forensic.read"],
+    connectionMode: "local_bridge",
+    consoleConnector: "OrbStack",
+    entrypoint: "http://127.0.0.1:8789/mcp",
+    lane: "mj-orbstack",
+    requiredSecrets: ["local OrbStack runtime"],
+    status: "ready_for_local_bridge",
+  }),
+  lane({
     activation: "Start the local bridge only for local inference lanes; do not expose it publicly.",
     allowedCapabilities: ["script.run", "forensic.read"],
     connectionMode: "local_bridge",
@@ -380,4 +428,40 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     requiredSecrets: ["local Ollama models"],
     status: "ready_for_local_bridge",
   }),
+  lane({
+    activation: "Route Marvin through the local models bridge as the Qwen coding, architecture, and security-strategy lane.",
+    allowedCapabilities: ["marvin.infer", "model.health", "memory.projection", "mcp.tools"],
+    connectionMode: "local_bridge",
+    consoleConnector: "Marvin",
+    entrypoint: "http://127.0.0.1:11437/mcp",
+    lane: "mj-marvin",
+    requiredSecrets: ["MJ_LOCAL_MODELS_TOKEN", "local Ollama qwen3:latest"],
+    status: "ready_for_local_bridge",
+  }),
+  lane({
+    activation: "Route Harbor through the local models bridge as the Mistral Nemo memory and operator-context lane.",
+    allowedCapabilities: ["harbor.infer", "model.health", "memory.projection", "mcp.tools"],
+    connectionMode: "local_bridge",
+    consoleConnector: "Harbor",
+    entrypoint: "http://127.0.0.1:11437/mcp",
+    lane: "mj-harbor",
+    requiredSecrets: ["MJ_LOCAL_MODELS_TOKEN", "local Ollama mistral-nemo:latest"],
+    status: "ready_for_local_bridge",
+  }),
+  lane({
+    activation: "Route Dick Diggs through the local models bridge as the Gemma research and source-grounded synthesis lane.",
+    allowedCapabilities: ["diggs.infer", "model.health", "memory.projection", "mcp.tools"],
+    connectionMode: "local_bridge",
+    consoleConnector: "Dick Diggs",
+    entrypoint: "http://127.0.0.1:11437/mcp",
+    lane: "mj-diggs",
+    requiredSecrets: ["MJ_LOCAL_MODELS_TOKEN", "local Ollama gemma3:4b"],
+    status: "ready_for_local_bridge",
+  }),
+];
+
+export const SKIPPED_CONSOLE_LANES: SkippedConsoleLane[] = [
+  { lane: "mj-computer", reason: "console plugin or Stratos_Tools application not observed" },
+  { lane: "mj-gadget", reason: "console plugin or Stratos_Tools application not observed" },
+  { lane: "mj-railway", reason: "console plugin or Stratos_Tools application not observed" },
 ];

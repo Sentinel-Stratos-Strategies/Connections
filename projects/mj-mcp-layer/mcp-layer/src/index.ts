@@ -1,4 +1,4 @@
-import { CONSOLE_LANE_AUTHORITY, CONSOLE_LANES } from "./console-lanes";
+import { CONSOLE_LANE_AUTHORITY, CONSOLE_LANES, SKIPPED_CONSOLE_LANES } from "./console-lanes";
 
 interface WatcherJob {
   actor: string;
@@ -17,10 +17,14 @@ interface Env {
   ALLOWED_ORIGINS?: string;
   OPERATOR_HEADER?: string;
   OPERATOR_TOKEN?: string;
+  AEGIS_TOKEN?: string;
+  GENESIS_TUNNEL_URL?: string;
   DB?: D1Database;
   FLAGS?: KVNamespace;
   EVIDENCE_BUCKET?: R2Bucket;
   WATCHER_QUEUE?: Queue<WatcherJob>;
+  /** Static dashboard + assets (Wrangler `assets.binding`) */
+  ASSETS?: Fetcher;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -42,6 +46,10 @@ interface PolicyConfig {
 
 const WATCHER_KINDS: WatcherKind[] = ["edge-abuse", "drift", "origin-health", "digest"];
 
+/** Mirrors `<meta http-equiv="Content-Security-Policy">` on dashboard HTML (CP-3). */
+const DASHBOARD_CSP =
+  "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+
 export const POLICY: PolicyConfig = {
   deny_by_default: true,
   allowed_paths: [
@@ -55,6 +63,7 @@ export const POLICY: PolicyConfig = {
     "/api/change-request",
     "/api/console/lanes",
     "/api/ledger",
+    "/api/genesis/mcp",
   ],
   required_headers: ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
   method_matrix: {
@@ -68,6 +77,7 @@ export const POLICY: PolicyConfig = {
     "/api/change-request": ["GET", "POST", "OPTIONS"],
     "/api/console/lanes": ["GET", "OPTIONS"],
     "/api/ledger": ["GET", "OPTIONS"],
+    "/api/genesis/mcp": ["POST", "OPTIONS"],
   },
   capability_matrix: {
     "/mcp": {
@@ -102,6 +112,9 @@ export const POLICY: PolicyConfig = {
     "/api/ledger": {
       GET: ["forensic.read", "mcp.admin"],
     },
+    "/api/genesis/mcp": {
+      POST: ["mcp.admin", "cloud.ops"],
+    },
   },
 };
 
@@ -134,6 +147,10 @@ export default {
         headers: { "content-type": "text/plain; charset=utf-8" },
         request,
       });
+    }
+
+    if (request.method === "GET" && (path === "/dashboard" || path === "/dashboard/" || path.startsWith("/dashboard/"))) {
+      return serveDashboard(request, env);
     }
 
     const policyBasePath = resolvePolicyBasePath(path);
@@ -200,6 +217,9 @@ export default {
 
     if (path === "/api/ledger" && request.method === "GET") {
       return handleLedgerList(request, env);
+    }
+    if (path === "/api/genesis/mcp" && request.method === "POST") {
+      return handleGenesisMcpProxy(request, env, ctx);
     }
 
     return json({ error: "not_found" }, { env, request, status: 404 });
@@ -274,6 +294,54 @@ async function handleMcpList(request: Request, env: Env): Promise<Response> {
       required_headers: POLICY.required_headers,
     },
   }, { env, request });
+}
+
+async function handleGenesisMcpProxy(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (!auth.ok) return json({ error: auth.error }, { env, request, status: 401 });
+
+  const body = await readRequestJson(request);
+  const tunnelURL = env.GENESIS_TUNNEL_URL;
+  if (!tunnelURL) {
+    return json({ error: "genesis_tunnel_not_configured" }, { env, request, status: 503 });
+  }
+
+  const token = env.AEGIS_TOKEN ?? env.OPERATOR_TOKEN;
+  if (!token) {
+    return json({ error: "aegis_token_not_configured" }, { env, request, status: 503 });
+  }
+
+  ctx.waitUntil(logEvent(env, {
+    actor: auth.actor,
+    category: "genesis.proxy",
+    message: "Forwarding MCP request to Genesis tunnel",
+    metadata: JSON.stringify(buildAuditMetadata(request, { tunnelURL })),
+    severity: "info",
+    source: "api",
+  }));
+
+  try {
+    const upstream = await fetch(`${tunnelURL.replace(/\/$/, "")}/mcp`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${token}`,
+        "x-genesis-token": token,
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = await upstream.text();
+    return new Response(payload, {
+      status: upstream.status,
+      headers: {
+        ...BASE_HEADERS,
+        "content-type": upstream.headers.get("content-type") ?? "application/json; charset=utf-8",
+      },
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "tunnel_unreachable";
+    return json({ error: detail }, { env, request, status: 502 });
+  }
 }
 
 async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -472,6 +540,7 @@ async function handleConsoleLanes(request: Request, env: Env, ctx: ExecutionCont
       denyByDefault: POLICY.deny_by_default,
       requiredHeaders: POLICY.required_headers,
     },
+    skipped: SKIPPED_CONSOLE_LANES,
   }, { env, request });
 }
 
@@ -628,6 +697,42 @@ async function handleProtectedList(
     resource,
     storageConfigured: Boolean(env.DB),
   }, { env, request });
+}
+
+async function serveDashboard(request: Request, env: Env): Promise<Response> {
+  if (!env.ASSETS) {
+    return text("Dashboard static assets not configured (missing ASSETS binding)", {
+      env,
+      request,
+      status: 503,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  const url = new URL(request.url);
+  let pathname = url.pathname;
+  if (pathname === "/dashboard" || pathname === "/dashboard/") {
+    pathname = "/dashboard/index.html";
+  }
+
+  const assetUrl = new URL(pathname + url.search, url.origin);
+  const assetRequest = new Request(assetUrl.toString(), {
+    method: "GET",
+    headers: request.headers,
+  });
+
+  const assetResponse = await env.ASSETS.fetch(assetRequest);
+  const headers = new Headers(assetResponse.headers);
+  if (pathname.endsWith(".html")) {
+    headers.set("Content-Security-Policy", DASHBOARD_CSP);
+  }
+  if (!headers.has("cache-control")) {
+    headers.set("cache-control", "public, max-age=120");
+  }
+  return new Response(assetResponse.body, {
+    status: assetResponse.status,
+    headers,
+  });
 }
 
 // ---------- Policy Enforcement ----------
@@ -905,6 +1010,7 @@ function renderHomePage(): string {
       <div class="ep"><h3>Turn Execution</h3><p><code>POST /turn/:id</code> &mdash; Submit or continue a turn</p></div>
       <div class="ep"><h3>Audit Trail</h3><p><code>GET /audit/events</code> &mdash; Query audit events</p><p><code>GET /api/ledger</code> &mdash; Immutable ledger</p></div>
       <div class="ep"><h3>Health &amp; Ops</h3><p><code>GET /healthz</code> &mdash; Health check</p><p><code>POST /api/checks/run</code> &mdash; Run checks</p></div>
+      <div class="ep"><h3>MJ Edge cockpit</h3><p><a href="/dashboard"><code>GET /dashboard</code></a> &mdash; Genesis OS static UI (ASSETS binding)</p></div>
       <div class="ep"><h3>Change Requests</h3><p><code>POST /api/change-request</code> &mdash; Submit</p><p><code>GET /api/change-request</code> &mdash; List</p></div>
       <div class="ep"><h3>Resources</h3><p><code>GET /api/assets</code> <code>GET /api/events</code></p><p><code>GET /api/incidents</code></p></div>
     </section>

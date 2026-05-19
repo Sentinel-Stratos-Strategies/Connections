@@ -38,7 +38,7 @@ authority_hosts:
       - /turn/*
       - /audit/*
       - /healthz
-    backend: mj-edge
+    backend: ellis-aegis-control-plane
 
 project_lanes:
   - tenant_id: kevis

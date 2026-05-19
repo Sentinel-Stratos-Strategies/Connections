@@ -1,0 +1,39 @@
+version: 1
+kind: mj_connections_manifest_catalog
+updated: "2026-05-17"
+paths_relative_to: repository_root
+description: >
+  Declarative manifests for MJ Layer (Connections). Paths are relative to the
+  Connections git repository root.
+
+categories:
+  sentinel_volume_mirror:
+    - projects/mj-mcp-layer/docs/references/sentinel-volume/MANIFEST_INDEX.md
+  routing:
+    - projects/mj-mcp-layer/cloudflare/manifests/mj-edge-routing.yaml
+  zones:
+    - projects/mj-mcp-layer/manifests/zones/hitch.guru.yaml
+    - projects/mj-mcp-layer/manifests/zones/kevis.online.yaml
+  tenants:
+    - projects/mj-mcp-layer/manifests/tenants/hitch.yaml
+    - projects/mj-mcp-layer/manifests/tenants/kevis.yaml
+  policies:
+    - projects/mj-mcp-layer/manifests/policies/mj-edge-unified-v2.yaml
+  deployment_compliance:
+    - projects/mj-mcp-layer/manifests/deployment/deployment-manifest.schema.json
+    - projects/mj-mcp-layer/manifests/deployment/deployment-manifest.example.json
+    - projects/mj-mcp-layer/manifests/compliance/soc2.yaml
+  budgets:
+    - projects/mj-mcp-layer/manifests/budgets/operator.yaml
+    - projects/mj-mcp-layer/manifests/budgets/codex.yaml
+    - projects/mj-mcp-layer/manifests/budgets/cursor.yaml
+    - projects/mj-mcp-layer/manifests/budgets/local-models.yaml
+  platform_security:
+    - projects/mj-mcp-layer/platform/manifests/unified-security-v1.yaml
+  connections_catalog:
+    - projects/mj-mcp/connections/infrastructure-connections.json
+  lane_packages:
+    glob_note: projects/mj-mcp/lanes/*/lane.manifest.json
+  tools_and_layout:
+    - projects/mj-mcp-layer/manifests/catalog/project-tools.yaml
+    - projects/mj-mcp-layer/docs/references/PROJECT_TOOL_MANIFEST.md

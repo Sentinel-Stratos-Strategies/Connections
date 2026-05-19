@@ -15,6 +15,8 @@ MJ is a multi-tenant MCP (Model Context Protocol) control plane running on Cloud
 
 Each external tool or platform connects through its own **mini-lane** — a scoped identity with isolated permissions, allowed capabilities, and audit requirements.
 
+For the latest verified domain status, phone endpoint, and full 34-lane registry, see [MJ-ACTIVE-DOMAINS-AND-MINI-LANES-2026-05-14.md](./MJ-ACTIVE-DOMAINS-AND-MINI-LANES-2026-05-14.md).
+
 ---
 
 ## Authentication

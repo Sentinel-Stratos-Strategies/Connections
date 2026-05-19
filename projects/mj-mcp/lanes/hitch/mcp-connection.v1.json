@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "lane": "mj-hitch",
+  "reviewedAt": "2026-05-15T18:35:00.000Z",
+  "localProject": "/Volumes/Stratos_Tools/projects/hitch2",
+  "github": {
+    "repo": "Sentinel-Stratos-Strategies/hitch2",
+    "url": "https://github.com/Sentinel-Stratos-Strategies/hitch2",
+    "visibility": "private",
+    "defaultBranch": "main",
+    "localBranch": "main",
+    "localStatus": "clean_at_review"
+  },
+  "gadget": {
+    "app": "hitch",
+    "developmentUrl": "https://hitch--development.gadget.app",
+    "productionUrl": "https://hitch.gadget.app",
+    "customDomain": "https://hitch.ellis-aegis.us",
+    "cli": "ggt",
+    "cliStatusAtReview": "logged_in_and_files_up_to_date",
+    "productionProblemAtReview": "production_missing_variables_from_current_environment"
+  },
+  "openaiMcp": {
+    "serverUrl": "https://hitch.ellis-aegis.us/mcp",
+    "transport": "streamable-http",
+    "openApiUrl": "https://hitch.ellis-aegis.us/.gadget/chatgpt/openapi.json",
+    "authorizationUrl": "https://hitch.ellis-aegis.us/api/oauth/v2/auth",
+    "tokenUrl": "https://hitch.ellis-aegis.us/api/oauth/v2/token",
+    "dynamicRegistrationUrl": "https://hitch.ellis-aegis.us/api/oauth/v2/reg",
+    "scopes": ["user", "openid", "offline_access"],
+    "metadataEndpoints": [
+      "https://hitch.ellis-aegis.us/.well-known/oauth-protected-resource",
+      "https://hitch.ellis-aegis.us/.well-known/openid-configuration",
+      "https://hitch.ellis-aegis.us/.well-known/oauth-authorization-server",
+      "https://hitch.ellis-aegis.us/.well-known/openai-apps-challenge",
+      "https://hitch.ellis-aegis.us/.well-known/openai-subdomain-verification.txt"
+    ]
+  },
+  "mjEdgeBridge": {
+    "note": "Hitch's current api/mcp.ts mjLayer tool calls REST bridge URLs shaped as ${MJ_EDGE_URL}/tools/:tool, not the streamable HTTP MCP endpoint directly.",
+    "requiredEnv": ["MJ_EDGE_URL", "MJ_EDGE_OPERATOR_TOKEN"],
+    "optionalEnv": ["MJ_EDGE_OPERATOR_HEADER", "MCP_SAMPLING_TIMEOUT_MS"],
+    "defaultOperatorHeader": "x-ellis-aegis-token",
+    "compatibilityCheck": "Confirm the chosen MJ edge host exposes POST /tools/:tool, or update the Hitch mjLayer tool to call the MJ MCP transport instead."
+  },
+  "reviewEvidence": {
+    "yarnBuild": "passed",
+    "ggtWhoami": "Joe Ellis",
+    "ggtStatus": "files_up_to_date",
+    "ggtProblems": "production_missing_variables_from_current_environment",
+    "liveHealth": {
+      "mcpGet": 200,
+      "openApi": 200,
+      "oauthProtectedResource": 200,
+      "openidConfiguration": 200,
+      "oauthAuthorizationServer": 200,
+      "openaiAppsChallenge": 200,
+      "openaiSubdomainVerification": "200_placeholder_token_at_review"
+    }
+  },
+  "requiredSecretsOrVars": {
+    "gadgetProduction": [
+      "PUBLIC_APP_URL",
+      "CUSTOM_DOMAIN_URL",
+      "OPENAI_SUBDOMAIN_VERIFICATION_TOKEN",
+      "OPENAI_APPS_CHALLENGE_TOKEN",
+      "OPENAI_API_KEY",
+      "MJ_EDGE_URL",
+      "MJ_EDGE_OPERATOR_TOKEN",
+      "MJ_EDGE_OPERATOR_HEADER",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "STRIPE_PRICE_ID_MONTHLY",
+      "STRIPE_PRICE_ID_YEARLY",
+      "STREAM_API_KEY",
+      "STREAM_API_SECRET"
+    ],
+    "mjLane": [
+      "OPERATOR_TOKEN",
+      "MCP_OPERATOR_TOKEN",
+      "CF_ZONE_ID_HITCH"
+    ]
+  },
+  "remainingBlockersAtReview": [
+    "Cloudflare DNS/domain finalization is being handled by the Cloudflare agent.",
+    "OpenAI subdomain verification endpoint still returned REPLACE_WITH_YOUR_TOKEN at review time.",
+    "Gadget production was missing variables from the current environment.",
+    "Confirm MJ edge REST /tools/:tool compatibility before relying on Hitch's mjLayer bridge in production."
+  ]
+}

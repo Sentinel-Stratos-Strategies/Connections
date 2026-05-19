@@ -1,0 +1,3 @@
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk5s1   140Gi   932Ki   140Gi     1%     119  1.5G    0%   /Volumes/SENTINEL
+/dev/disk7s2   231Gi    98Gi    12Gi    90%    413k  126M    0%   /Volumes/RESCUE_OS

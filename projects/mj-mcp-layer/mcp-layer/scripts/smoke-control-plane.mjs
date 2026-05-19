@@ -118,7 +118,7 @@ if (!token) {
   record(
     results,
     "console_lanes_with_auth",
-    consoleLanes.status === 200 && Array.isArray(consoleLanes.body?.lanes) && consoleLanes.body.lanes.length >= 30,
+    consoleLanes.status === 200 && Array.isArray(consoleLanes.body?.lanes) && consoleLanes.body.lanes.length >= 40,
     {
       laneCount: Array.isArray(consoleLanes.body?.lanes) ? consoleLanes.body.lanes.length : 0,
       status: consoleLanes.status,

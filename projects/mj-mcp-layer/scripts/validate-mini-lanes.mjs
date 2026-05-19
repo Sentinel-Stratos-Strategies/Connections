@@ -27,6 +27,17 @@ const requiredConsoleLanes = new Set([
   "mj-superpowers",
 ]);
 
+const laneIdPattern = /^mj-[a-z0-9-]+$/;
+const allowedAuthModes = new Set([
+  "api_key",
+  "oauth",
+  "service_account",
+  "cloudflare_access",
+  "github_oidc",
+  "mcp_connector",
+  "hybrid",
+]);
+
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
@@ -60,6 +71,8 @@ for (const lane of requiredConsoleLanes) {
 }
 
 for (const [lane, entry] of manifestsByLane) {
+  assert(laneIdPattern.test(lane), `lane manifest id must match ${laneIdPattern}: ${lane}`);
+  assert(allowedAuthModes.has(entry.manifest.authMode), `lane manifest has unsupported authMode: ${lane}`);
   assert(connectionsByLane.has(lane), `manifest lane missing from infrastructure connections: ${lane}`);
   assert(entry.manifest.requiresAudit === true, `lane must require audit: ${lane}`);
   assert(entry.manifest.dataBoundaries?.secretHandling === "never_return_secret_values", `lane must never return secret values: ${lane}`);
