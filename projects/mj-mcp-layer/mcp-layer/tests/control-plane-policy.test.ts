@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
 import worker, { POLICY } from "../src/index";
 
@@ -200,5 +202,35 @@ describe("control-plane policy", () => {
 
     assert.equal(apiHealthResponse.status, 200);
     assert.deepEqual(await readJson(apiHealthResponse), { status: "ok" });
+  });
+
+  test("dashboard without ASSETS binding returns 503", async () => {
+    const response = await fetchWorker("/dashboard", { method: "GET" });
+    assert.equal(response.status, 503);
+    assert.match(await response.text(), /missing ASSETS binding/);
+  });
+
+  test("dashboard HTML probes GET /healthz read-only (CP-4)", () => {
+    const dashboardSource = fileURLToPath(new URL("../../dashboard/mj-edge-v2.html", import.meta.url));
+    const html = readFileSync(dashboardSource, "utf8");
+    assert.match(html, /fetch\s*\(\s*["']\/healthz["']/);
+    assert.match(html, /\bid\s*=\s*["']hp-status["']/);
+  });
+
+  test("dashboard delegates to ASSETS fetcher", async () => {
+    const assets: Fetcher = {
+      async fetch(req: Request) {
+        assert.match(new URL(req.url).pathname, /\/dashboard\/index\.html$/);
+        return new Response("<!doctype html><title>ok</title>", {
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      },
+    };
+
+    const response = await fetchWorker("/dashboard", { method: "GET" }, createEnv({ ASSETS: assets }));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type")?.includes("text/html"), true);
+    assert.match(String(response.headers.get("content-security-policy") ?? ""), /default-src 'self'/);
+    assert.match(await response.text(), /<title>ok<\/title>/);
   });
 });
