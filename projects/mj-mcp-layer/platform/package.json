@@ -1,0 +1,25 @@
+{
+  "name": "@mj-mcp/platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MJ MCP Platform — Provider-agnostic infrastructure orchestration with immutable ledger, drift detection, and multi-tenant governance.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mcp-cli": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "cli": "tsx src/cli/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  },
+  "dependencies": {
+    "yaml": "^2.8.4"
+  }
+}

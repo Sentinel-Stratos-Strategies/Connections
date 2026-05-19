@@ -1,0 +1,46 @@
+{
+  "lane": "mj-orbstack",
+  "platform": "orbstack",
+  "purpose": "Governed local substrate lane for OrbStack-backed containers and VMs used with MJ local bridges (build, runtime, and operator tooling) without exposing bridge endpoints publicly.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "host.runtime.describe",
+    "host.bridge.health",
+    "mj.tools.list",
+    "mj.tools.describe",
+    "forensic.read"
+  ],
+  "deniedActions": [
+    "secret.read",
+    "network.egress_unrestricted",
+    "permission.escalate",
+    "production_deploy_without_approval"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "host.vm.create_external",
+    "host.network.tailscale_bridge",
+    "bridge.restart"
+  ],
+  "dataBoundaries": {
+    "externalRead": "denied",
+    "externalWrite": "denied",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  },
+  "mcpConnection": {
+    "transport": "http",
+    "endpoint": "http://127.0.0.1:8789/mcp",
+    "requiredHeaders": {
+      "x-tenant-id": "operator",
+      "x-request-id": "required",
+      "x-policy-version": "mj-local-bridge-v1",
+      "x-operator-capability": "mcp.admin"
+    },
+    "authHeader": "x-mj-local-models-token",
+    "authScheme": "local_bearer"
+  }
+}

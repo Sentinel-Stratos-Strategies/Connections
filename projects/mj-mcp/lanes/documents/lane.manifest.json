@@ -1,0 +1,34 @@
+{
+  "lane": "mj-documents",
+  "platform": "documents",
+  "purpose": "Create, edit, render, and verify local document artifacts for MJ plans, runbooks, contracts, and customer-support handoffs.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "document.create",
+    "document.edit",
+    "document.redline",
+    "document.render_verify",
+    "comment.prepare"
+  ],
+  "deniedActions": [
+    "document_secret_extract",
+    "external_share_unapproved",
+    "secret.read",
+    "policy_control.bypass"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "legal_document_finalize",
+    "external_document_share",
+    "contract_redline_accept_all"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_local_documents_only",
+    "externalWrite": "document_artifacts_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

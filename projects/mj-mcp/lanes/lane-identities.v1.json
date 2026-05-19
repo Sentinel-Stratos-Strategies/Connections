@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "authorityZone": "ellis-aegis.us",
+  "lastSynced": "2026-05-15",
+  "dashboard": {
+    "host": "mcp.ellis-aegis.us",
+    "path": "/*",
+    "service": "mj-edge"
+  },
+  "mainTunnel": {
+    "host": "mcp.ellis-aegis.us",
+    "path": "/mcp",
+    "service": "mj-edge",
+    "notes": "Primary phone, tool, MCP client, editor integration, and mini-lane endpoint."
+  },
+  "liveConsoleLanes": {
+    "verifiedAt": "2026-05-15T20:20:00.000Z",
+    "endpoint": "https://api.ellis-aegis.us/api/console/lanes",
+    "count": 34,
+    "skippedLaneIds": ["mj-computer", "mj-gadget", "mj-railway"],
+    "note": "Operator-authenticated GET; count matches Worker lane registry length (includes mj-perplexity as of 2026-05-15). Re-verify /api/console/lanes after deploy. Skipped IDs match handleConsoleLanes static list."
+  },
+  "laneIdentities": [
+    { "lane": "mj-codex", "identity": "lane-codex-core", "platform": "codex", "host": "codex.ellis-aegis.us", "path": "/mcp", "auth": "operator_token", "tenantId": "operator" },
+    { "lane": "mj-browser", "identity": "lane-browser-console", "platform": "browser", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-chrome", "identity": "lane-chrome-local", "platform": "chrome", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-computer", "identity": "lane-computer-use-local", "platform": "computer-use", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-superpowers", "identity": "lane-superpowers-local", "platform": "superpowers", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-github", "identity": "lane-github-app", "platform": "github", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "github_app_or_oidc", "tenantId": "operator" },
+    { "lane": "mj-cloudflare", "identity": "lane-cloudflare-api", "platform": "cloudflare", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "api_token", "tenantId": "operator" },
+    { "lane": "mj-openai", "identity": "lane-openai-core", "platform": "openai", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "api_or_connector", "tenantId": "operator" },
+    { "lane": "mj-perplexity", "identity": "lane-perplexity-api", "platform": "perplexity", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "api_token", "tenantId": "operator" },
+    { "lane": "mj-figma", "identity": "lane-figma-oauth", "platform": "figma", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "oauth_connector", "tenantId": "operator" },
+    { "lane": "mj-gadget", "identity": "lane-gadget-api", "platform": "gadget", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "api_token", "tenantId": "operator" },
+    { "lane": "mj-google", "identity": "lane-google-workspace", "platform": "google", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "oauth_or_service_account", "tenantId": "operator" },
+    { "lane": "mj-google-drive", "identity": "lane-google-drive", "platform": "google-drive", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "oauth_connector", "tenantId": "operator" },
+    { "lane": "mj-google-calendar", "identity": "lane-google-calendar", "platform": "google-calendar", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "oauth_connector", "tenantId": "operator" },
+    { "lane": "mj-notion", "identity": "lane-notion-oauth", "platform": "notion", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "oauth_connector", "tenantId": "operator" },
+    { "lane": "mj-linear", "identity": "lane-linear-oauth", "platform": "linear", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "oauth_connector", "tenantId": "operator" },
+    { "lane": "mj-gmail", "identity": "lane-gmail-oauth", "platform": "gmail", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "oauth_connector", "tenantId": "operator" },
+    { "lane": "mj-circleci", "identity": "lane-circleci-api", "platform": "circleci", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "api_or_connector", "tenantId": "operator" },
+    { "lane": "mj-build-ios", "identity": "lane-build-ios-local", "platform": "build-ios", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-build-macos", "identity": "lane-build-macos-local", "platform": "build-macos", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-build-web", "identity": "lane-build-web-local", "platform": "build-web", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-network-solutions", "identity": "lane-network-solutions", "platform": "network-solutions", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-codex-security", "identity": "lane-codex-security", "platform": "codex-security", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-scite", "identity": "lane-scite-research", "platform": "scite", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-canva", "identity": "lane-canva-design", "platform": "canva", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-supabase", "identity": "lane-supabase-db", "platform": "supabase", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-documents", "identity": "lane-documents-local", "platform": "documents", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "local_artifact_scope", "tenantId": "operator" },
+    { "lane": "mj-presentations", "identity": "lane-presentations-local", "platform": "presentations", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "local_artifact_scope", "tenantId": "operator" },
+    { "lane": "mj-railway", "identity": "lane-railway-api", "platform": "railway", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "api_token", "tenantId": "operator" },
+    { "lane": "mj-spreadsheets", "identity": "lane-spreadsheets-local", "platform": "spreadsheets", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "local_artifact_scope", "tenantId": "operator" },
+    { "lane": "mj-test-android", "identity": "lane-test-android-local", "platform": "test-android", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "connector_scope", "tenantId": "operator" },
+    { "lane": "mj-vercel", "identity": "lane-vercel-ai", "platform": "vercel", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "api_or_connector", "tenantId": "operator" },
+    { "lane": "mj-zed", "identity": "lane-zed-editor", "platform": "zed", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "operator_token", "tenantId": "operator" },
+    { "lane": "mj-cursor", "identity": "lane-cursor-editor", "platform": "cursor", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "operator_token", "tenantId": "operator" },
+    { "lane": "mj-antigravity", "identity": "lane-antigravity-core", "platform": "antigravity", "host": "mcp.ellis-aegis.us", "path": "/mcp", "auth": "operator_token", "tenantId": "operator" },
+    { "lane": "mj-local-models", "identity": "lane-local-models", "platform": "local-models", "host": "127.0.0.1:8789", "path": "/mcp", "auth": "local_bridge", "tenantId": "operator" },
+    { "lane": "mj-orbstack", "identity": "lane-orbstack-local-runtime", "platform": "orbstack", "host": "127.0.0.1:8789", "path": "/mcp", "auth": "local_bridge", "tenantId": "operator" }
+  ],
+  "thirdPartyConnectorContract": {
+    "format": "json",
+    "requiredFields": [
+      "lane",
+      "provider",
+      "host",
+      "path",
+      "auth",
+      "approvalGate",
+      "audit"
+    ]
+  }
+}

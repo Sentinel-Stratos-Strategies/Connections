@@ -1,0 +1,17 @@
+actor: operator
+reset_schedule: daily
+limits:
+  dns_create:
+    max_per_period: 10
+  waf_modify:
+    max_per_period: 20
+  ratelimit_modify:
+    max_per_period: 10
+  cache_modify:
+    max_per_period: 10
+  worker_route_modify:
+    max_per_period: 5
+  destructive_changes:
+    max_per_period: 3
+  general_modify:
+    max_per_period: 50

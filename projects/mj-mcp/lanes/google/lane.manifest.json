@@ -1,0 +1,39 @@
+{
+  "lane": "mj-google",
+  "platform": "google",
+  "purpose": "Coordinate approved Google Workspace, Firebase, Google Cloud, Gemini, AI Studio, and Vertex workflows through scoped identity and service accounts.",
+  "owner": "Sentinel",
+  "authMode": "hybrid",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "workspace.profile.read",
+    "drive.file.read_approved",
+    "firebase.project.read",
+    "firebase.firestore.read",
+    "firebase.firestore.write_scoped",
+    "vertex.model.call",
+    "gemini.model.call"
+  ],
+  "deniedActions": [
+    "workspace.export_all",
+    "admin.directory.bulk_delete",
+    "iam.permission.escalate",
+    "service_account.key_reveal",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "firebase.production_write",
+    "gcp.iam.update",
+    "service_account.create",
+    "vertex.endpoint.deploy",
+    "drive.external_share"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_workspace_project_scope_only",
+    "externalWrite": "scoped_firestore_and_api_actions_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

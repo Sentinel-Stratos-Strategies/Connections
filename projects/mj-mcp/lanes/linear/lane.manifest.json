@@ -1,0 +1,35 @@
+{
+  "lane": "mj-linear",
+  "platform": "linear",
+  "purpose": "Create, update, and organize issues, projects, labels, and implementation plans from approved MJ workflows.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "issue_projection",
+  "allowedActions": [
+    "issue.read",
+    "issue.create",
+    "issue.update",
+    "issue.comment",
+    "project.read",
+    "label.read"
+  ],
+  "deniedActions": [
+    "workspace.delete",
+    "permission.escalate",
+    "user.impersonate",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "issue.bulk_update",
+    "project.archive",
+    "issue.delete"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_workspace_scope_only",
+    "externalWrite": "issues_comments_projects_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

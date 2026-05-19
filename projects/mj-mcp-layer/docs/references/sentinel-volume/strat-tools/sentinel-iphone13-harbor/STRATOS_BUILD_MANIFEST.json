@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "document_type": "stratos_build_manifest",
+  "project": {
+    "id": "sentinel-stratos-iphone13-harbor",
+    "title": "Sentinel Stratos · iPhone 13 Harbor Core Tether",
+    "subtitle": "Zero-trust glass terminal · WireGuard · Shortcuts · Harbor API stub",
+    "target_hardware": "iPhone 13 (iPhone14,5)",
+    "target_os": "iOS 26.x+",
+    "toolchain": [
+      "Xcode / CLI tools",
+      "Apple Configurator 2 / cfgutil",
+      "WireGuard (wireguard-tools)",
+      "Python 3 + fastapi/uvicorn (optional API)"
+    ]
+  },
+  "harbor_core": {
+    "wireguard_subnet": "10.13.37.0/24",
+    "harbor_wg_address": "10.13.37.1",
+    "iphone_wg_address": "10.13.37.2",
+    "wireguard_listen_port": 51820,
+    "api_http_port": 8000,
+    "ssh_port": 22
+  },
+  "phases": [
+    { "phase": 1, "script": "scripts/01-preflight-check.sh", "title": "Preflight — host + device checks" },
+    { "phase": 2, "script": "scripts/02-erase-and-prepare.sh", "title": "Erase & prepare (supervision path)" },
+    { "phase": 3, "script": "scripts/03-install-profiles.sh", "title": "Install baseline profiles" },
+    { "phase": 4, "script": "scripts/04-enable-developer-mode.sh", "title": "Developer mode & diagnostics" },
+    { "phase": 5, "script": "scripts/05-configure-ai-and-security.sh", "title": "AI & security posture" },
+    { "phase": 6, "script": "scripts/06-networking-and-agents.sh", "title": "Networking — API stub, shortcuts, deploy" },
+    { "phase": 7, "script": "scripts/07-lockdown-verification.sh", "title": "Lockdown verification" },
+    { "phase": 8, "script": "scripts/08-generate-wireguard-keys.sh", "title": "WireGuard keys & tether profile" },
+    { "phase": 9, "script": "scripts/09-generate-shortcuts.py", "title": "Shortcut compiler (invoked by Phase 6)" }
+  ],
+  "shortcuts": [
+    {
+      "id": "harbor-core-api-tether",
+      "display_title": "Sentinel Stratos · Harbor API Check-In",
+      "artifact_file": "shortcuts/harbor-core-api-tether.shortcut",
+      "role": "REST check-in to Harbor Core FastAPI"
+    },
+    {
+      "id": "ssh-server-wake",
+      "display_title": "Sentinel Stratos · Mac SSH Wake",
+      "artifact_file": "shortcuts/ssh-server-wake.shortcut",
+      "role": "SSH wake / script on Harbor Core"
+    },
+    {
+      "id": "gemini-ashell-bypass",
+      "display_title": "Sentinel Stratos · On-Device Agent",
+      "artifact_file": "shortcuts/gemini-ashell-bypass.shortcut",
+      "role": "a-Shell on-device agent path"
+    }
+  ],
+  "profile_templates": [
+    "profiles/01-encrypted-dns.mobileconfig",
+    "profiles/02-wireguard-zero-trust-tether.mobileconfig",
+    "profiles/04-wifi-secure.mobileconfig"
+  ],
+  "generated_artifacts_not_in_git": [
+    "keys/*.key",
+    "profiles/02-wireguard-tether-LIVE.mobileconfig",
+    "harbor-core-wg0.conf",
+    "logs/*"
+  ],
+  "notes": [
+    "LIVE profiles and key material are produced by Phase 8 and must stay out of version control.",
+    "Import URLs in shortcuts/DEPLOY_MANIFEST.json use HARBOR_CORE_IP; use LAN IP for Safari until WireGuard is up."
+  ]
+}

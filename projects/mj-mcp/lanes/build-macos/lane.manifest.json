@@ -1,0 +1,35 @@
+{
+  "lane": "mj-build-macos",
+  "platform": "build-macos-apps",
+  "purpose": "Coordinate approved macOS app builds, SwiftUI/AppKit implementation, signing inspection, packaging, and notarization checks.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "xcode.build",
+    "swiftpm.test",
+    "swiftui.review",
+    "appkit.inspect",
+    "signing.inspect",
+    "package.prepare"
+  ],
+  "deniedActions": [
+    "developer_id_secret_read",
+    "keychain.export",
+    "notarize_without_approval",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "signing_change",
+    "notarization_submit",
+    "release_package_publish"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_macos_projects_only",
+    "externalWrite": "repo_patch_and_local_build_actions_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

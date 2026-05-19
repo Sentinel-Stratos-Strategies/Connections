@@ -1,0 +1,44 @@
+{
+  "lane": "mj-cloudflare",
+  "platform": "cloudflare",
+  "purpose": "Operate the MJ security membrane, edge control plane, Workers, R2, D1, KV, Vectorize, queues, Access, AI Gateway, and audit enforcement.",
+  "owner": "Sentinel",
+  "authMode": "cloudflare_access",
+  "memoryMode": "audit_only",
+  "allowedActions": [
+    "worker.read",
+    "worker.deploy_preview",
+    "r2.object.read_metadata",
+    "d1.query_read",
+    "kv.read",
+    "queue.enqueue",
+    "audit.record",
+    "security.check",
+    "ai_gateway.route_read"
+  ],
+  "deniedActions": [
+    "account.delete",
+    "zone.delete",
+    "secret.read",
+    "permission.escalate",
+    "waf.disable_all",
+    "access.disable"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "worker.deploy_production",
+    "dns.update",
+    "r2.object.delete_bulk",
+    "d1.schema_migrate_remote",
+    "kv.bulk_delete",
+    "access.policy_update",
+    "ai_gateway.provider_update"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_account_zone_scope_only",
+    "externalWrite": "security_and_deployment_actions_with_gates",
+    "truthWrite": "internal_only",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

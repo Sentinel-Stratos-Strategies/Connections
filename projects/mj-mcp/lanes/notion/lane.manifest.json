@@ -1,0 +1,34 @@
+{
+  "lane": "mj-notion",
+  "platform": "notion",
+  "purpose": "Read and write approved workspace docs, specs, operating notes, and project memory projections.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "page.read",
+    "page.create",
+    "page.update",
+    "database.query",
+    "comment.create"
+  ],
+  "deniedActions": [
+    "workspace.export_all",
+    "permission.escalate",
+    "secret.read",
+    "integration_token.reveal"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "page.delete",
+    "database.bulk_update",
+    "workspace.share_external"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_workspace_scope_only",
+    "externalWrite": "approved_pages_and_databases_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

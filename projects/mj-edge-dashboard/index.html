@@ -69,12 +69,6 @@
           </div>
           <h3 style="margin-top:14px">Event Log</h3>
           <div id="log" class="log"></div>
-      <div class="card" style="margin-top:12px">
-        <div class="small">API Token (local stub)</div>
-        <input id="api-token" value="mj-local-dev-token" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2b3553;background:#0f1425;color:#fff"/>
-        <button class="cmd" style="margin-top:10px" onclick="reloadData()"><strong>Reload from API</strong><small>GET /api/tenants and /api/events</small></button>
-      </div>
-
         </div>
       </div>
     </section>
@@ -126,31 +120,6 @@ function switchView(v){
   document.getElementById('tab-admin').setAttribute('aria-selected', admin);
   document.getElementById('tab-customer').setAttribute('aria-selected', !admin);
 }
-
-async function apiGet(path){
-  const token=document.getElementById('api-token')?.value?.trim() || '';
-  const res=await fetch(path,{headers:{Authorization:`Bearer ${token}`}});
-  if(!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-async function reloadData(){
-  try{
-    const [tenantResp, eventResp]=await Promise.all([apiGet('/api/tenants'), apiGet('/api/events')]);
-    tenants.length=0;
-    tenantResp.tenants.forEach(t=>tenants.push(t));
-    render(tenants);
-    const el=document.getElementById('log');
-    el.innerHTML='';
-    eventResp.events.forEach(ev=>{
-      el.innerHTML += `<div style="padding:8px;border-bottom:1px solid #2a3150">📡 ${ev.message}<br><span style="color:#9aa6c0">${ev.ts}</span></div>`;
-    });
-    act('Reloaded tenants/events from API');
-  }catch(err){
-    act(`API reload failed (${err.message}); using local in-page dataset`);
-  }
-}
-
 function act(msg){
   const el=document.getElementById('log');
   const now=new Date().toISOString();
@@ -162,7 +131,6 @@ document.getElementById('search').addEventListener('input', (e)=>{
 });
 render(tenants);
 act('Dashboard initialized and monitoring subscriptions');
-reloadData();
 </script>
 </body>
 </html>

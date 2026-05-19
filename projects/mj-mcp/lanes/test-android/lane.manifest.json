@@ -1,0 +1,34 @@
+{
+  "lane": "mj-test-android",
+  "platform": "test-android-apps",
+  "purpose": "Coordinate approved Android emulator QA, UI inspection, log capture, and performance profiling for MJ mobile surfaces.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "emulator.qa",
+    "adb.inspect",
+    "screenshot.capture",
+    "logcat.read",
+    "performance.profile"
+  ],
+  "deniedActions": [
+    "device_secret_read",
+    "keystore.export",
+    "production_release_upload",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "device_settings_change",
+    "release_artifact_publish",
+    "profile_external_app"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_android_targets_only",
+    "externalWrite": "local_emulator_actions_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

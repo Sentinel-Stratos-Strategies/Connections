@@ -1,0 +1,34 @@
+{
+  "lane": "mj-canva",
+  "platform": "canva",
+  "purpose": "Coordinate approved branded presentation and design asset creation for MJ handoffs, enterprise decks, and customer-facing materials.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "design.search",
+    "presentation.create",
+    "design.resize",
+    "design.translate",
+    "brand.asset_prepare"
+  ],
+  "deniedActions": [
+    "brand_asset_delete",
+    "workspace.export_all",
+    "permission.escalate",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "public_asset_publish",
+    "brand_template_update",
+    "external_share"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_design_scope_only",
+    "externalWrite": "design_updates_require_approval",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

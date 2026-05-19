@@ -1,0 +1,35 @@
+{
+  "lane": "mj-superpowers",
+  "platform": "superpowers",
+  "purpose": "Apply disciplined planning, TDD, debugging, verification, and branch-finishing workflows around MJ build execution.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "plan.write",
+    "tdd.sequence",
+    "debug.systematic",
+    "verification.run",
+    "handoff.prepare",
+    "branch.finish"
+  ],
+  "deniedActions": [
+    "secret.read",
+    "approval.fake",
+    "policy_control.bypass",
+    "unreviewed_merge"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "merge_recommendation",
+    "release_gate_pass",
+    "scope_expansion"
+  ],
+  "dataBoundaries": {
+    "externalRead": "repo_and_thread_scope_only",
+    "externalWrite": "plans_and_audit_notes_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

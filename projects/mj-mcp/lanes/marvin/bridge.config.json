@@ -1,0 +1,29 @@
+{
+  "lane": "mj-marvin",
+  "persona": "marvin",
+  "displayName": "Marvin",
+  "model": "qwen3:latest",
+  "bridge": "mj-local-models-bridge",
+  "endpoint": "http://127.0.0.1:11437/mcp",
+  "tool": "marvin.infer",
+  "memory": {
+    "tenantId": "local-marvin",
+    "mode": "projection_only",
+    "localRoot": "/Volumes/SENTINEL/memory/personas/marvin",
+    "cloudflareScope": "r2_projection/personas/marvin",
+    "vectorNamespace": "mj_marvin",
+    "truthPromotion": "approval_required"
+  },
+  "mjToolCatalog": [
+    "console_lanes",
+    "memory.route",
+    "memory.projection.read",
+    "cloudflare.security.check",
+    "github.repo.read",
+    "codex.code.patch_propose",
+    "codex-security.finding_discovery"
+  ],
+  "sourceContext": [
+    "/Volumes/SENTINEL/Recovered/RESCUE_OS_20260511/AgentWork/training/data/final/marvin_qwen_identity.jsonl"
+  ]
+}

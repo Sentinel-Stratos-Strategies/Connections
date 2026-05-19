@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "generated_at": "2026-05-12T00:00:00.000Z",
+  "git": {
+    "sha": "example-sha",
+    "branch": "cursor/mj-layer-enterprise-ready-1c9b",
+    "dirty": false
+  },
+  "runtime": {
+    "name": "mj-edge",
+    "authority_zone": "ellis-aegis.us",
+    "public_base_url": "https://mcp.ellis-aegis.us",
+    "workers_dev": true,
+    "compatibility_date": "2026-03-29"
+  },
+  "routes": [
+    {
+      "pattern": "mj.ellis-aegis.us/*",
+      "zone_name": "ellis-aegis.us"
+    },
+    {
+      "pattern": "mcp.ellis-aegis.us/*",
+      "zone_name": "ellis-aegis.us"
+    },
+    {
+      "pattern": "codex.ellis-aegis.us/*",
+      "zone_name": "ellis-aegis.us"
+    }
+  ],
+  "storage_bindings": {
+    "DB": "d1:ellis-aegis-control-plane",
+    "EVIDENCE_BUCKET": "r2:ellis-aegis-evidence",
+    "FLAGS": "kv:FLAGS",
+    "WATCHER_QUEUE": "queue:ellis-aegis-watchers"
+  },
+  "protected_routes": {
+    "mcp": "/mcp",
+    "turn": "/turn/*",
+    "audit": "/audit/*",
+    "change_request": "/api/change-request",
+    "ledger": "/api/ledger",
+    "checks": "/api/checks/run"
+  },
+  "smoke_results": [
+    {
+      "name": "healthz_public",
+      "ok": true,
+      "status": 200
+    }
+  ],
+  "status": "go"
+}

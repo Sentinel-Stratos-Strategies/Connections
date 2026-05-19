@@ -1,0 +1,31 @@
+{
+  "lane": "mj-hitch-mcp",
+  "platform": "hitch_project",
+  "purpose": "Primary MCP endpoint for the Hitch project domain (hitch.guru); routes through mj-edge with operator policy.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": ["mcp.health.read", "mcp.tools.list", "mcp.tool.call_approved", "forensic.read"],
+  "deniedActions": ["secret.read", "permission.escalate", "policy_control.bypass"],
+  "requiresAudit": true,
+  "requiresApprovalFor": ["mcp.connector.add_external"],
+  "dataBoundaries": {
+    "externalRead": "connector_scope_only",
+    "externalWrite": "approval_required",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  },
+  "mcpConnection": {
+    "transport": "http",
+    "endpoint": "https://hitch.guru/mcp",
+    "requiredHeaders": {
+      "x-tenant-id": "operator",
+      "x-request-id": "generated_per_request",
+      "x-policy-version": "mj-edge-unified-v2",
+      "x-operator-capability": "mcp.admin"
+    },
+    "authHeader": "x-ellis-aegis-token",
+    "authScheme": "Bearer"
+  }
+}
