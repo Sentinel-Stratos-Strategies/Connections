@@ -1,0 +1,28 @@
+{
+  "lane": "mj-chatgpt",
+  "platform": "openai",
+  "purpose": "Use ChatGPT connector flows against the Cloudflare MJ endpoint with operator policy headers for forensic read and tool orchestration.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "mcp.admin",
+    "tool.call_approved",
+    "forensic.read"
+  ],
+  "deniedActions": [
+    "secret.read",
+    "permission.escalate"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "mcp_config_update"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_project_scope_only",
+    "externalWrite": "official_api_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}
