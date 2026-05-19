@@ -119,6 +119,16 @@ export const CONSOLE_LANES: ConsoleLaneConnection[] = [
     status: "ready_for_connector_scope",
   }),
   lane({
+    activation: "Use ChatGPT connector flows against the Cloudflare MJ endpoint with operator policy headers.",
+    allowedCapabilities: ["mcp.admin", "tool.call_approved", "forensic.read"],
+    connectionMode: "chatgpt_connector",
+    consoleConnector: "ChatGPT",
+    entrypoint: "https://mcp.ellis-aegis.us/api/genesis/mcp",
+    lane: "mj-chatgpt",
+    requiredSecrets: ["OPERATOR_TOKEN", "AEGIS_TOKEN"],
+    status: "ready_for_connector_scope",
+  }),
+  lane({
     activation: "Use Figma for design-system and implementation handoffs.",
     allowedCapabilities: ["doc.read", "tool.call_approved"],
     connectionMode: "oauth_connector",

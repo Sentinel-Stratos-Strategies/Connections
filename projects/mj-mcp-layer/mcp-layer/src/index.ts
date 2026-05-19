@@ -17,6 +17,8 @@ interface Env {
   ALLOWED_ORIGINS?: string;
   OPERATOR_HEADER?: string;
   OPERATOR_TOKEN?: string;
+  AEGIS_TOKEN?: string;
+  GENESIS_TUNNEL_URL?: string;
   DB?: D1Database;
   FLAGS?: KVNamespace;
   EVIDENCE_BUCKET?: R2Bucket;
@@ -55,6 +57,7 @@ export const POLICY: PolicyConfig = {
     "/api/change-request",
     "/api/console/lanes",
     "/api/ledger",
+    "/api/genesis/mcp",
   ],
   required_headers: ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
   method_matrix: {
@@ -68,6 +71,7 @@ export const POLICY: PolicyConfig = {
     "/api/change-request": ["GET", "POST", "OPTIONS"],
     "/api/console/lanes": ["GET", "OPTIONS"],
     "/api/ledger": ["GET", "OPTIONS"],
+    "/api/genesis/mcp": ["POST", "OPTIONS"],
   },
   capability_matrix: {
     "/mcp": {
@@ -101,6 +105,9 @@ export const POLICY: PolicyConfig = {
     },
     "/api/ledger": {
       GET: ["forensic.read", "mcp.admin"],
+    },
+    "/api/genesis/mcp": {
+      POST: ["mcp.admin", "cloud.ops"],
     },
   },
 };
@@ -201,6 +208,9 @@ export default {
     if (path === "/api/ledger" && request.method === "GET") {
       return handleLedgerList(request, env);
     }
+    if (path === "/api/genesis/mcp" && request.method === "POST") {
+      return handleGenesisMcpProxy(request, env, ctx);
+    }
 
     return json({ error: "not_found" }, { env, request, status: 404 });
   },
@@ -274,6 +284,54 @@ async function handleMcpList(request: Request, env: Env): Promise<Response> {
       required_headers: POLICY.required_headers,
     },
   }, { env, request });
+}
+
+async function handleGenesisMcpProxy(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (!auth.ok) return json({ error: auth.error }, { env, request, status: 401 });
+
+  const body = await readRequestJson(request);
+  const tunnelURL = env.GENESIS_TUNNEL_URL;
+  if (!tunnelURL) {
+    return json({ error: "genesis_tunnel_not_configured" }, { env, request, status: 503 });
+  }
+
+  const token = env.AEGIS_TOKEN ?? env.OPERATOR_TOKEN;
+  if (!token) {
+    return json({ error: "aegis_token_not_configured" }, { env, request, status: 503 });
+  }
+
+  ctx.waitUntil(logEvent(env, {
+    actor: auth.actor,
+    category: "genesis.proxy",
+    message: "Forwarding MCP request to Genesis tunnel",
+    metadata: JSON.stringify(buildAuditMetadata(request, { tunnelURL })),
+    severity: "info",
+    source: "api",
+  }));
+
+  try {
+    const upstream = await fetch(`${tunnelURL.replace(/\/$/, "")}/mcp`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${token}`,
+        "x-genesis-token": token,
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = await upstream.text();
+    return new Response(payload, {
+      status: upstream.status,
+      headers: {
+        ...BASE_HEADERS,
+        "content-type": upstream.headers.get("content-type") ?? "application/json; charset=utf-8",
+      },
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "tunnel_unreachable";
+    return json({ error: detail }, { env, request, status: 502 });
+  }
 }
 
 async function handleMcpExecute(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
