@@ -7,7 +7,7 @@ Set these in the repository settings (`Settings > Secrets and variables > Action
 | Secret | Description | Used By |
 |--------|-------------|---------|
 | `CLOUDFLARE_API_TOKEN` or `CF_API_TOKEN` | Cloudflare API token for the `ellis-aegis.us`, `hitch.guru`, and `kevis.online` zones plus the MJ Worker resources. Workflows prefer `CLOUDFLARE_API_TOKEN` and fall back to `CF_API_TOKEN`. | All workflows |
-| `CF_ACCOUNT_ID` | Cloudflare account ID (`cf-account-id-placeholder`) | Deploy + Scan |
+| `CF_ACCOUNT_ID` | Cloudflare account ID (`5b94eedaff8fb3ccaa1b607f57963e10`) | Deploy + Scan |
 | `CF_ZONE_ID_ELLIS` | Zone ID for primary authority zone (ellis-aegis.us) | Deploy + Scan |
 | `CF_ZONE_ID_HITCH` | Zone ID for hitch.guru | Deploy + Scan |
 | `CF_ZONE_ID_KEVIS` | Zone ID for kevis.online | Deploy + Scan |
@@ -55,7 +55,7 @@ If deploy fails with `kv bindings require kv write perms [code: 10023]`, the tok
 gh secret set CLOUDFLARE_API_TOKEN --body "your-token-here"
 # Optional compatibility alias if older scripts still reference CF_API_TOKEN:
 gh secret set CF_API_TOKEN --body "your-token-here"
-gh secret set CF_ACCOUNT_ID --body "cf-account-id-placeholder"
+gh secret set CF_ACCOUNT_ID --body "5b94eedaff8fb3ccaa1b607f57963e10"
 gh secret set CF_ZONE_ID_ELLIS --body "zone-id-here"
 gh secret set CF_ZONE_ID_HITCH --body "zone-id-here"
 gh secret set CF_ZONE_ID_KEVIS --body "zone-id-here"

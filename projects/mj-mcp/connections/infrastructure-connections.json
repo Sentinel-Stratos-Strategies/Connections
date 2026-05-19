@@ -2,7 +2,7 @@
   "$schema": "../schemas/infrastructure-connections.schema.json",
   "version": 1,
   "authority": {
-    "account": "cf-account-id-placeholder",
+    "account": "5b94eedaff8fb3ccaa1b607f57963e10",
     "zone": "ellis-aegis.us",
     "worker": "mj-edge",
     "entrypoints": [

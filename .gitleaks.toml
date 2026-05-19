@@ -3,3 +3,8 @@ paths = [
   "projects/mj-mcp-layer/mcp-layer/public/dashboard/vendor/lucide.min.js",
   "projects/mj-mcp-layer/mcp-layer/public/dashboard/vendor/fonts/.*"
 ]
+regexes = [
+  "5b94eedaff8fb3ccaa1b607f57963e10",
+  "5a7fbf6b63bf4b02bb14ab7cd3d2f521",
+  "5fe110fa-5bc8-4925-a5d5-2ca08c5bee5b"
+]

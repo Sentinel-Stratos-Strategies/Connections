@@ -33,7 +33,7 @@ These must be set as GitHub Actions secrets in the Connections repository:
 | Secret | Scope | Description |
 |--------|-------|-------------|
 | `CF_API_TOKEN` | Account + Zone Edit | Cloudflare API token with full hardening scopes |
-| `CF_ACCOUNT_ID` | Account | `cf-account-id-placeholder` |
+| `CF_ACCOUNT_ID` | Account | `5b94eedaff8fb3ccaa1b607f57963e10` |
 | `CF_ZONE_ID_ELLIS` | Zone | Zone ID for `ellis-aegis.us` |
 | `CF_ZONE_ID_HITCH` | Zone | Zone ID for `hitch.guru` |
 | `CF_ZONE_ID_KEVIS` | Zone | Zone ID for `kevis.online` |
@@ -67,7 +67,7 @@ The token must include:
 # From Stratos host
 export CF_API_TOKEN="your-cloudflare-token"
 export CF_ZONE_ID="zone-id-for-ellis-aegis"
-export CF_ACCOUNT_ID="cf-account-id-placeholder"
+export CF_ACCOUNT_ID="5b94eedaff8fb3ccaa1b607f57963e10"
 
 cd /Volumes/Stratos_Tools/projects/Connections/projects/mj-mcp-layer
 

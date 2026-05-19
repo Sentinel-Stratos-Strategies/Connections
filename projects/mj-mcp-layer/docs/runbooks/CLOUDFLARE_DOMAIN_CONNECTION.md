@@ -4,7 +4,7 @@ This is the exact connection contract for wiring the enterprise MJ MCP Layer to 
 
 ## Authority
 
-- Cloudflare account: `cf-account-id-placeholder`
+- Cloudflare account: `5b94eedaff8fb3ccaa1b607f57963e10`
 - Primary authority zone: `ellis-aegis.us`
 - Primary Worker: `mj-edge`
 - Primary public endpoints:
@@ -18,7 +18,7 @@ This is the exact connection contract for wiring the enterprise MJ MCP Layer to 
 |---|---|---|
 | Worker | `mj-edge` | runtime |
 | D1 | `ellis-aegis-control-plane` | `DB` |
-| KV | existing namespace id `cf-kv-id-placeholder` | `FLAGS` |
+| KV | existing namespace id `5a7fbf6b63bf4b02bb14ab7cd3d2f521` | `FLAGS` |
 | R2 | `ellis-aegis-evidence` | `EVIDENCE_BUCKET` |
 | Queue | `ellis-aegis-watchers` | `WATCHER_QUEUE` |
 

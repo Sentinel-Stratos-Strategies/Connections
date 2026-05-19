@@ -7,10 +7,10 @@ Controller: Codex truth-source lane
 
 - Connections repo: `/Volumes/Stratos_Tools/projects/Connections`
 - Connections GitHub repo: `Sentinel-Stratos-Strategies/Connections`
-- Connections baseline: `main` at `e8da22c2555934ffc11c9d98a31ec98810110a23`
+- Connections baseline: `main` at `commit-sha-placeholder`
 - Cloudflare repo: `/Volumes/Stratos_Tools/projects/Cloudflare-ellis-aegis`
 - Cloudflare GitHub repo: `Sentinel-Stratos-Strategies/Cloudflare-ellis-aegis`
-- Cloudflare baseline: `main` at `fbc7ba1f76c814ca412993b90db57a362593a534`
+- Cloudflare baseline: `main` at `commit-sha-placeholder`
 - Production MJ endpoint target: `https://mcp.ellis-aegis.us`
 - Production Worker name: `mj-edge`
 

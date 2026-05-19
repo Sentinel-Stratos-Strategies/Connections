@@ -18,7 +18,7 @@ export interface SkippedConsoleLane {
 }
 
 export const CONSOLE_LANE_AUTHORITY = {
-  account: "cf-account-id-placeholder",
+  account: "5b94eedaff8fb3ccaa1b607f57963e10",
   zone: "ellis-aegis.us",
   worker: "mj-edge",
   entrypoints: [

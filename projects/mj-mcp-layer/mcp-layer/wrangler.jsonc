@@ -47,13 +47,13 @@
     {
       "binding": "DB",
       "database_name": "ellis-aegis-control-plane",
-      "database_id": "cf-database-id-placeholder",
+      "database_id": "5fe110fa-5bc8-4925-a5d5-2ca08c5bee5b",
     },
   ],
   "kv_namespaces": [
     {
       "binding": "FLAGS",
-      "id": "cf-kv-id-placeholder",
+      "id": "5a7fbf6b63bf4b02bb14ab7cd3d2f521",
     },
   ],
   "r2_buckets": [
