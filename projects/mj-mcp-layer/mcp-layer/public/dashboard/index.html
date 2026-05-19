@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MJ Edge — Genesis OS</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+<link rel="stylesheet" href="vendor/fonts.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+
+:root{
+  /* ── MJ Edge palette (from Broverse B logo: amber glow → coral → hot-pink → violet → cobalt → teal) ── */
+  --amber:    #F5A623;
+  --gold:     #FFD166;
+  --coral:    #FF6B6B;
+  --salmon:   #FF8C69;
+  --rose:     #F72585;
+  --magenta:  #E040FB;
+  --violet:   #9B5DE5;
+  --indigo:   #5C6BC0;
+  --cobalt:   #3A86FF;
+  --sky:      #48CAE4;
+  --teal:     #06D6A0;
+  --mint:     #80FFDB;
+  --cream:    #FFF8EE;
+  --bg:       #08060F;
+  --bg2:      #0D0A1A;
+  --bg3:      #090B1F;
+  --sur:      rgba(15,10,28,0.85);
+  --bdr:      rgba(247,37,133,0.25);
+  --bdr-h:    rgba(6,214,160,0.5);
+  --muted:    rgba(255,248,238,0.62);
+  --faint:    rgba(255,248,238,0.28);
+  --FD:'Space Grotesk','Inter',sans-serif;
+  --FB:'Inter',sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+
+body{font-family:var(--FB);color:var(--cream);background:var(--bg);min-height:100dvh;overflow-x:hidden;line-height:1.6}
+
+/* ════ APP BG ════ */
+.app-bg{
+  min-height:100dvh;
+  background:
+    radial-gradient(ellipse at 10%  0%,  rgba(255,107,107,.20),transparent 36%),
+    radial-gradient(ellipse at 80%  5%,  rgba(6,214,160,.14),  transparent 32%),
+    radial-gradient(ellipse at 95%  55%, rgba(58,134,255,.16), transparent 34%),
+    radial-gradient(ellipse at 2%   75%, rgba(155,93,229,.18), transparent 35%),
+    radial-gradient(ellipse at 50% 110%, rgba(245,166,35,.22), transparent 42%),
+    linear-gradient(158deg,#08060F 0%,#0D0A1A 40%,#090B1F 68%,#08060F 100%);
+}
+
+/* ════ SHELL ════ */
+.shell{width:min(1300px,calc(100vw - 2rem));margin:0 auto;padding:clamp(1.5rem,4vw,3.5rem) 0;display:flex;flex-direction:column;gap:1.2rem}
+
+/* ════ TOP BAR ════ */
+.topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+
+/* ── MJ EDGE MARK ── */
+.mj-wrap{display:flex;align-items:center;gap:1rem}
+.mj-mark{
+  position:relative;overflow:hidden;
+  width:72px;height:72px;flex-shrink:0;
+  border-radius:20px;display:grid;place-items:center;
+  background:
+    conic-gradient(from 200deg at 50% 50%,
+      #F5A623 0deg, #FF6B6B 60deg, #F72585 110deg,
+      #9B5DE5 160deg, #3A86FF 210deg, #06D6A0 260deg,
+      #F5A623 360deg);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,248,238,.5),
+    inset 0 0 20px rgba(8,6,15,.75),
+    0 0 32px rgba(247,37,133,.55),
+    0 0 60px rgba(6,214,160,.22);
+}
+.mj-rings{position:absolute;inset:0;width:100%;height:100%}
+.mj-initials{
+  position:relative;z-index:2;
+  font-family:var(--FD);font-weight:900;font-size:1.65rem;
+  letter-spacing:-.06em;color:#fff;
+  text-shadow:0 0 14px rgba(255,248,238,.9);
+}
+@keyframes scan{0%{opacity:0;transform:translateY(-120%)}45%{opacity:.8}100%{opacity:0;transform:translateY(200%)}}
+.mj-mark::after{content:'';position:absolute;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,rgba(255,248,238,.95),transparent);animation:scan 2.6s ease-in-out infinite;pointer-events:none}
+
+.mj-word{display:flex;flex-direction:column;line-height:1.05}
+.mj-edge{
+  font-family:var(--FD);font-weight:900;
+  font-size:clamp(1.9rem,4.5vw,3.2rem);letter-spacing:-.065em;
+  background:linear-gradient(105deg,#FF6B6B 0%,#F72585 28%,#9B5DE5 55%,#3A86FF 78%,#06D6A0 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.mj-sub{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.22em;color:var(--teal);margin-top:1px}
+
+/* ── VIEW TABS ── */
+.vtabs{display:flex;gap:.35rem;background:rgba(15,10,28,.8);border:1px solid var(--bdr);border-radius:14px;padding:.25rem}
+.vtab{
+  padding:8px 22px;border-radius:10px;font-family:var(--FB);font-size:.84rem;font-weight:700;
+  cursor:pointer;border:none;color:var(--muted);background:transparent;
+  transition:all 150ms var(--ease);white-space:nowrap;
+}
+.vtab.active{
+  color:var(--cream);
+  background:linear-gradient(130deg,rgba(247,37,133,.55),rgba(58,134,255,.45));
+  box-shadow:0 0 18px rgba(247,37,133,.32);
+}
+.vtab:not(.active):hover{color:var(--cream);background:rgba(255,248,238,.06)}
+
+/* ════ HERO ════ */
+.hero{
+  display:grid;grid-template-columns:1fr auto;gap:1.5rem;align-items:center;
+  padding:2rem 2.5rem;border:1px solid rgba(255,248,238,.12);border-radius:28px;
+  background:
+    linear-gradient(135deg,rgba(8,6,15,.94),rgba(9,11,31,.78)),
+    linear-gradient(90deg,rgba(255,107,107,.09),rgba(6,214,160,.07));
+  box-shadow:0 0 44px rgba(247,37,133,.2),0 0 88px rgba(6,214,160,.1),inset 0 1px 0 rgba(255,248,238,.07);
+  position:relative;overflow:hidden;
+}
+.hero::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 85% 50%,rgba(6,214,160,.06),transparent 48%),radial-gradient(ellipse at 10% 80%,rgba(255,107,107,.06),transparent 44%)}
+.eyebrow{color:var(--teal);text-transform:uppercase;letter-spacing:.2em;font-size:.72rem;font-weight:800;margin-bottom:.5rem}
+.hero-h1{font-family:var(--FD);font-size:clamp(2rem,5.5vw,4.2rem);line-height:.93;letter-spacing:-.065em;font-weight:900}
+.hero-h1 em{font-style:normal;background:linear-gradient(105deg,#FF6B6B,#F72585 38%,#9B5DE5 68%,#06D6A0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-lede{max-width:580px;margin-top:.75rem;color:var(--muted);font-size:.9rem;line-height:1.72}
+.live-pill{display:flex;align-items:center;gap:.5rem;padding:8px 16px;border-radius:999px;border:1px solid rgba(6,214,160,.35);background:rgba(6,214,160,.08);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--teal);white-space:nowrap}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+.live-pill.hp-unknown{border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.1);color:var(--amber)}
+.live-pill.hp-unknown .live-dot{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.live-pill.hp-pass{border-color:rgba(6,214,160,.35);background:rgba(6,214,160,.08);color:var(--teal)}
+.live-pill.hp-pass .live-dot{background:var(--teal);box-shadow:0 0 10px var(--teal)}
+.live-pill.hp-fail{border-color:rgba(255,107,107,.45);background:rgba(255,107,107,.1);color:var(--coral)}
+.live-pill.hp-fail .live-dot{background:var(--coral);box-shadow:0 0 10px var(--coral);animation:none}
+.live-pill.hp-offline{border-color:rgba(255,248,238,.14);background:rgba(255,248,238,.04);color:var(--muted)}
+.live-pill.hp-offline .live-dot{background:var(--faint);box-shadow:none;animation:none}
+
+/* ════ SECTION LABEL ════ */
+.sec-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);padding:.25rem 0;display:flex;align-items:center;gap:.75rem}
+.sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(247,37,133,.35),transparent)}
+
+/* ════ SYSTEM CARDS ════ */
+.sys-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.75rem}
+.sys-card{
+  padding:1rem;border:1px solid var(--bdr);border-radius:18px;
+  background:rgba(8,6,15,.65);min-height:108px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  transition:border-color 170ms var(--ease),box-shadow 170ms var(--ease),transform 170ms var(--ease);
+}
+.sys-card:hover{border-color:rgba(6,214,160,.42);transform:translateY(-2px);box-shadow:0 0 22px rgba(247,37,133,.14)}
+.sc-icon [data-lucide]{width:18px;height:18px}
+.ic-teal   [data-lucide]{color:var(--teal);  filter:drop-shadow(0 0 7px rgba(6,214,160,.75))}
+.ic-coral  [data-lucide]{color:var(--coral); filter:drop-shadow(0 0 7px rgba(255,107,107,.75))}
+.ic-rose   [data-lucide]{color:var(--rose);  filter:drop-shadow(0 0 7px rgba(247,37,133,.75))}
+.ic-violet [data-lucide]{color:var(--violet);filter:drop-shadow(0 0 7px rgba(155,93,229,.75))}
+.ic-cobalt [data-lucide]{color:var(--cobalt);filter:drop-shadow(0 0 7px rgba(58,134,255,.75))}
+.ic-amber  [data-lucide]{color:var(--amber); filter:drop-shadow(0 0 7px rgba(245,166,35,.75))}
+.ic-magenta[data-lucide]{color:var(--magenta);filter:drop-shadow(0 0 7px rgba(224,64,251,.75))}
+.sc-lbl{display:block;margin-top:.6rem;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em}
+.sc-val{display:block;margin-top:2px;font-size:.9rem;font-weight:700;color:var(--cream)}
+.pill{display:inline-flex;align-items:center;margin-top:.6rem;padding:3px 7px;border-radius:999px;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;border:1px solid currentColor;font-weight:700}
+.p-teal  {color:var(--teal)} .p-coral{color:var(--coral)} .p-rose{color:var(--rose)}
+.p-violet{color:var(--violet)} .p-amber{color:var(--amber)} .p-sky{color:var(--sky)}
+
+/* ════ METRICS ════ */
+.met-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
+.met-card{
+  padding:1.25rem;border-radius:18px;border:1px solid rgba(255,248,238,.08);
+  background:rgba(8,6,15,.6);display:flex;flex-direction:column;gap:.4rem;
+  transition:border-color 160ms var(--ease),transform 160ms var(--ease);
+}
+.met-card:hover{border-color:rgba(247,37,133,.38);transform:translateY(-2px)}
+.met-num{font-family:var(--FD);font-weight:700;font-size:clamp(1.5rem,3vw,2.2rem);line-height:1;letter-spacing:-.04em}
+.mn-coral{color:var(--coral)} .mn-teal{color:var(--teal)} .mn-violet{color:var(--violet)} .mn-amber{color:var(--amber)} .mn-rose{color:var(--rose)} .mn-cobalt{color:var(--cobalt)}
+.met-lbl{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.met-delta{font-size:.7rem;color:var(--faint)}
+
+/* ════ PALETTE CARD ════ */
+.pal-card{
+  overflow:hidden;border-radius:28px;
+  border:1px solid rgba(247,37,133,.3);
+  background:
+    linear-gradient(178deg,rgba(9,11,31,.88),rgba(8,6,15,.96)),
+    radial-gradient(circle at 7%  0%, rgba(255,107,107,.2), transparent 34%),
+    radial-gradient(circle at 90% 10%,rgba(6,214,160,.16),  transparent 32%),
+    radial-gradient(circle at 50% 100%,rgba(58,134,255,.12),transparent 40%);
+  box-shadow:0 0 44px rgba(247,37,133,.16),0 0 88px rgba(6,214,160,.1);
+}
+.pal-top{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.5rem;border-bottom:1px solid rgba(247,37,133,.16)}
+.pal-title{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.18em}
+.pt-admin{color:var(--coral)} .pt-cust{color:var(--teal)}
+.pal-search{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.75rem;padding:.9rem 1.5rem;border-bottom:1px solid rgba(247,37,133,.16)}
+.pal-search [data-lucide]{width:18px;height:18px;color:var(--teal);flex-shrink:0}
+.pal-search input{width:100%;border:0;outline:0;color:var(--cream);background:transparent;font-size:.97rem;font-family:var(--FB)}
+.pal-search input::placeholder{color:var(--faint)}
+kbd{padding:4px 9px;border-radius:8px;color:var(--muted);background:rgba(255,248,238,.07);border:1px solid rgba(255,248,238,.13);font-size:.7rem;white-space:nowrap}
+.cmd-groups{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.cmd-group{padding:1.1rem;border-right:1px solid rgba(247,37,133,.12)}
+.cmd-group:last-child{border-right:0}
+.cg-title{margin:0 0 .7rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.16em;font-weight:800}
+.cg-coral  {color:#FF8C69} .cg-teal{color:var(--teal)} .cg-violet{color:var(--violet)} .cg-amber{color:var(--amber)} .cg-rose{color:var(--rose)} .cg-cobalt{color:var(--cobalt)}
+
+.cmd-row{
+  position:relative;width:100%;
+  display:grid;grid-template-columns:auto 1fr auto;
+  gap:.7rem;align-items:center;margin:.45rem 0;padding:10px .75rem;
+  border:1px solid rgba(255,248,238,.08);border-radius:13px;
+  color:var(--cream);text-align:left;background:rgba(255,248,238,.025);
+  cursor:pointer;font-family:var(--FB);
+  transition:transform 145ms var(--ease),border-color 145ms var(--ease),background 145ms var(--ease);
+}
+.cmd-row:hover{transform:translateY(-1px)}
+.cr-coral  :hover,.cmd-row.cr-coral:hover  {border-color:rgba(255,107,107,.48);background:rgba(255,107,107,.07)}
+.cmd-row.cr-coral:hover  {border-color:rgba(255,107,107,.48);background:rgba(255,107,107,.07)}
+.cmd-row.cr-teal:hover   {border-color:rgba(6,214,160,.48);  background:rgba(6,214,160,.07)}
+.cmd-row.cr-violet:hover {border-color:rgba(155,93,229,.48); background:rgba(155,93,229,.07)}
+.cmd-row.cr-amber:hover  {border-color:rgba(245,166,35,.48); background:rgba(245,166,35,.07)}
+.cmd-row.cr-rose:hover   {border-color:rgba(247,37,133,.48); background:rgba(247,37,133,.07)}
+.cmd-row.cr-cobalt:hover {border-color:rgba(58,134,255,.48); background:rgba(58,134,255,.07)}
+.cmd-row:active{transform:translateY(0)}
+
+.ci{width:33px;height:33px;display:grid;place-items:center;border-radius:10px;flex-shrink:0}
+.ci [data-lucide]{width:16px;height:16px}
+.ci-coral  {color:var(--coral);  background:rgba(255,107,107,.12);box-shadow:inset 0 0 0 1px rgba(255,107,107,.24)}
+.ci-teal   {color:var(--teal);   background:rgba(6,214,160,.12);  box-shadow:inset 0 0 0 1px rgba(6,214,160,.24)}
+.ci-violet {color:var(--violet); background:rgba(155,93,229,.12); box-shadow:inset 0 0 0 1px rgba(155,93,229,.24)}
+.ci-amber  {color:var(--amber);  background:rgba(245,166,35,.12); box-shadow:inset 0 0 0 1px rgba(245,166,35,.24)}
+.ci-rose   {color:var(--rose);   background:rgba(247,37,133,.12); box-shadow:inset 0 0 0 1px rgba(247,37,133,.24)}
+.ci-cobalt {color:var(--cobalt); background:rgba(58,134,255,.12); box-shadow:inset 0 0 0 1px rgba(58,134,255,.24)}
+.ci-sky    {color:var(--sky);    background:rgba(72,202,228,.12); box-shadow:inset 0 0 0 1px rgba(72,202,228,.24)}
+
+.cmd-row strong{display:block;font-size:.87rem;font-weight:600;color:var(--cream)}
+.cmd-row small{display:block;margin-top:2px;color:var(--muted);font-size:.72rem}
+
+.lane{width:6px;height:32px;border-radius:999px;flex-shrink:0}
+.ln-coral  {background:linear-gradient(#FF6B6B,#F72585);  box-shadow:0 0 12px rgba(255,107,107,.5)}
+.ln-teal   {background:linear-gradient(#06D6A0,#3A86FF);  box-shadow:0 0 12px rgba(6,214,160,.5)}
+.ln-violet {background:linear-gradient(#9B5DE5,#5C6BC0);  box-shadow:0 0 12px rgba(155,93,229,.5)}
+.ln-amber  {background:linear-gradient(#FFD166,#F5A623);  box-shadow:0 0 12px rgba(245,166,35,.5)}
+.ln-rose   {background:linear-gradient(#F72585,#9B5DE5);  box-shadow:0 0 12px rgba(247,37,133,.5)}
+.ln-cobalt {background:linear-gradient(#3A86FF,#48CAE4);  box-shadow:0 0 12px rgba(58,134,255,.5)}
+
+/* ════ TENANT TABLE ════ */
+.tbl-wrap{border:1px solid rgba(58,134,255,.22);border-radius:24px;background:rgba(9,11,31,.6);overflow:hidden}
+.tbl-hdr{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.5rem;border-bottom:1px solid rgba(58,134,255,.14)}
+.tbl-ht{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.18em;color:var(--cobalt)}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 1rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid rgba(255,248,238,.07)}
+td{padding:11px 1rem;font-size:.88rem;border-bottom:1px solid rgba(255,248,238,.05)}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:rgba(58,134,255,.06)}
+.td-dom{color:var(--teal);font-weight:600}
+.tplan{font-size:.65rem;padding:3px 8px;border-radius:999px;border:1px solid currentColor;font-weight:700}
+.tp-ent{color:var(--coral)} .tp-pro{color:var(--violet)} .tp-starter{color:var(--teal)} .tp-trial{color:var(--amber)}
+.act-btn{padding:5px 13px;border-radius:8px;font-size:.7rem;font-weight:700;border:1px solid rgba(247,37,133,.32);color:var(--coral);background:rgba(247,37,133,.08);cursor:pointer;transition:all 130ms var(--ease);font-family:var(--FB)}
+.act-btn:hover{background:rgba(247,37,133,.18);border-color:rgba(247,37,133,.6)}
+
+/* ════ FEED ════ */
+.feed-wrap{border:1px solid var(--bdr);border-radius:24px;background:rgba(8,6,15,.72);overflow:hidden}
+.feed-hdr{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.5rem;border-bottom:1px solid var(--bdr)}
+.feed-ht{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.18em;color:var(--coral)}
+.feed-list{list-style:none;padding:.5rem .9rem}
+.feed-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.75rem;padding:9px .75rem;border-radius:11px;cursor:default;transition:background 130ms var(--ease)}
+.feed-item:hover{background:rgba(255,248,238,.04)}
+.fdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.fd-teal  {background:var(--teal);  box-shadow:0 0 7px var(--teal)}
+.fd-coral {background:var(--coral); box-shadow:0 0 7px var(--coral)}
+.fd-violet{background:var(--violet);box-shadow:0 0 7px var(--violet)}
+.fd-amber {background:var(--amber); box-shadow:0 0 7px var(--amber)}
+.fd-rose  {background:var(--rose);  box-shadow:0 0 7px var(--rose)}
+.feed-txt{font-size:.88rem;color:var(--cream)}
+.feed-sub{font-size:.7rem;color:var(--muted)}
+.feed-t{font-size:.68rem;color:var(--faint);white-space:nowrap}
+
+/* ════ CUSTOMER CARDS ════ */
+.cust-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.cust-card{padding:1.5rem;border-radius:24px;border:1px solid rgba(255,248,238,.1);background:rgba(8,6,15,.7);display:flex;flex-direction:column;gap:1rem}
+.cc-title{font-family:var(--FD);font-size:clamp(1.1rem,2vw,1.4rem);font-weight:700;letter-spacing:-.03em}
+.cc-sub{font-size:.87rem;color:var(--muted)}
+.pa-row{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.75rem;
+  padding:11px;border:1px solid rgba(255,248,238,.08);border-radius:12px;
+  background:rgba(255,248,238,.025);cursor:pointer;
+  transition:all 145ms var(--ease);font-family:var(--FB);color:var(--cream);
+}
+.pa-row:hover{border-color:rgba(6,214,160,.4);background:rgba(6,214,160,.07)}
+.pa-ico{width:34px;height:34px;display:grid;place-items:center;border-radius:10px}
+.pa-ico [data-lucide]{width:16px;height:16px}
+.pai-teal  {color:var(--teal);  background:rgba(6,214,160,.12); box-shadow:inset 0 0 0 1px rgba(6,214,160,.2)}
+.pai-coral {color:var(--coral); background:rgba(255,107,107,.12);box-shadow:inset 0 0 0 1px rgba(255,107,107,.2)}
+.pai-violet{color:var(--violet);background:rgba(155,93,229,.12);box-shadow:inset 0 0 0 1px rgba(155,93,229,.2)}
+.pai-amber {color:var(--amber); background:rgba(245,166,35,.12); box-shadow:inset 0 0 0 1px rgba(245,166,35,.2)}
+.pai-cobalt{color:var(--cobalt);background:rgba(58,134,255,.12); box-shadow:inset 0 0 0 1px rgba(58,134,255,.2)}
+.pai-rose  {color:var(--rose);  background:rgba(247,37,133,.12); box-shadow:inset 0 0 0 1px rgba(247,37,133,.2)}
+.pa-txt strong{display:block;font-size:.87rem;font-weight:600}
+.pa-txt small{display:block;color:var(--muted);font-size:.72rem}
+.pa-arr [data-lucide]{width:15px;height:15px;color:var(--faint)}
+
+/* ════ VIEW PANELS ════ */
+.vp{display:none;flex-direction:column;gap:1.2rem}
+.vp.on{display:flex}
+
+/* ════ TOAST ════ */
+#toast{
+  position:fixed;bottom:1.5rem;right:1.5rem;padding:11px 18px;
+  border-radius:14px;background:linear-gradient(130deg,rgba(8,6,15,.97),rgba(9,11,31,.97));
+  border:1px solid rgba(6,214,160,.4);color:var(--teal);font-size:.87rem;font-weight:600;
+  box-shadow:0 0 28px rgba(6,214,160,.28);pointer-events:none;
+  opacity:0;transform:translateY(10px);transition:opacity 200ms var(--ease),transform 200ms var(--ease);z-index:999;
+}
+#toast.show{opacity:1;transform:translateY(0)}
+
+/* ════ FOCUS ════ */
+:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:4px}
+
+/* ════ RESPONSIVE ════ */
+@media(max-width:1024px){.sys-grid{grid-template-columns:repeat(3,1fr)}.cmd-groups{grid-template-columns:repeat(2,1fr)}.cmd-group{border-right:0;border-bottom:1px solid rgba(247,37,133,.1)}.cmd-group:nth-child(even){border-right:0}.cmd-group:last-child{border-bottom:0}.met-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.hero{grid-template-columns:1fr}.mj-mark{width:58px;height:58px}.mj-edge{font-size:1.9rem}.sys-grid{grid-template-columns:repeat(2,1fr)}.cmd-groups{grid-template-columns:1fr}.cust-grid{grid-template-columns:1fr}.met-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="app-bg">
+<div class="shell">
+
+<!-- ══ TOP BAR ══ -->
+<div class="topbar">
+  <div class="mj-wrap">
+    <div class="mj-mark" aria-hidden="true">
+      <svg class="mj-rings" viewBox="0 0 72 72" fill="none">
+        <rect x="3"  y="3"  width="66" height="66" rx="17" stroke="#FF6B6B" stroke-width="2.2" stroke-dasharray="4 2.5" opacity=".6"/>
+        <rect x="7"  y="7"  width="58" height="58" rx="14" stroke="#F72585" stroke-width="1.8" opacity=".55"/>
+        <rect x="12" y="12" width="48" height="48" rx="11" stroke="#9B5DE5" stroke-width="1.5" opacity=".5"/>
+        <rect x="17" y="17" width="38" height="38" rx="8"  stroke="#3A86FF" stroke-width="1.3" opacity=".45"/>
+        <rect x="22" y="22" width="28" height="28" rx="6"  stroke="#06D6A0" stroke-width="1.1" opacity=".5"/>
+      </svg>
+      <span class="mj-initials">MJ</span>
+    </div>
+    <div class="mj-word">
+      <span class="mj-edge">MJ Edge</span>
+      <span class="mj-sub">Genesis OS &middot; Command Layer</span>
+    </div>
+  </div>
+  <div class="vtabs" role="tablist">
+    <button class="vtab active" data-view="admin"    onclick="sw('admin')"   >&#9889; Admin</button>
+    <button class="vtab"        data-view="customer" onclick="sw('customer')">&#128100; Customer</button>
+  </div>
+</div>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div>
+    <p class="eyebrow">Genesis OS &mdash; Command Layer</p>
+    <h1 class="hero-h1">MJ Layer<br><em>Command Center</em></h1>
+    <p class="hero-lede">A governed cloud-shell cockpit for opening lanes, closing doors, dispatching providers, and proving every play &mdash; across every tenant.</p>
+  </div>
+  <div class="live-pill hp-unknown" id="hp-status" role="status" aria-live="polite" aria-busy="true"><span class="live-dot" id="hp-dot"></span><span id="hp-label">Checking</span></div>
+</section>
+
+<!-- ══ SYSTEM STATE (shared) ══ -->
+<p class="sec-label">System State</p>
+<section class="sys-grid">
+  <article class="sys-card"><span class="sc-icon ic-teal"><i data-lucide="cloud"></i></span><div><span class="sc-lbl">Domain Auth</span><strong class="sc-val">Cloudflare</strong></div><span class="pill p-teal">anchored</span></article>
+  <article class="sys-card"><span class="sc-icon ic-coral"><i data-lucide="terminal-square"></i></span><div><span class="sc-lbl">MJ Orchestrator</span><strong class="sc-val">Cloud Shell</strong></div><span class="pill p-coral">active</span></article>
+  <article class="sys-card"><span class="sc-icon ic-amber"><i data-lucide="badge-dollar-sign"></i></span><div><span class="sc-lbl">Financial Gate</span><strong class="sc-val">Stripe</strong></div><span class="pill p-amber">wiring</span></article>
+  <article class="sys-card"><span class="sc-icon ic-violet"><i data-lucide="file-clock"></i></span><div><span class="sc-lbl">Evidence Ledger</span><strong class="sc-val">Recording</strong></div><span class="pill p-teal">recording</span></article>
+  <article class="sys-card"><span class="sc-icon ic-cobalt"><i data-lucide="activity"></i></span><div><span class="sc-lbl">Runtime Verifier</span><strong class="sc-val">Watching</strong></div><span class="pill p-sky">watching</span></article>
+  <article class="sys-card"><span class="sc-icon ic-rose"><i data-lucide="users"></i></span><div><span class="sc-lbl">Active Tenants</span><strong class="sc-val">12</strong></div><span class="pill p-rose">online</span></article>
+</section>
+
+<!-- ══════════════════════════════════════
+     ADMIN VIEW
+══════════════════════════════════════ -->
+<div id="vp-admin" class="vp on">
+
+  <p class="sec-label">Admin Metrics</p>
+  <div class="met-grid">
+    <div class="met-card"><span class="met-num mn-coral">247</span><span class="met-lbl">API Calls / min</span><span class="met-delta">&#8593; 12% vs last hour</span></div>
+    <div class="met-card"><span class="met-num mn-teal">99.8%</span><span class="met-lbl">30-day Uptime</span><span class="met-delta">0 outages this month</span></div>
+    <div class="met-card"><span class="met-num mn-violet">$4,280</span><span class="met-lbl">MRR</span><span class="met-delta">&#8593; 8% this week</span></div>
+    <div class="met-card"><span class="met-num mn-amber">38ms</span><span class="met-lbl">Avg Latency</span><span class="met-delta">&#8595; 4ms vs yesterday</span></div>
+  </div>
+
+  <p class="sec-label">Admin Command Palette</p>
+  <section class="pal-card">
+    <div class="pal-top">
+      <span class="pal-title pt-admin">Admin Panel &mdash; Full Access</span>
+      <span class="live-pill" style="font-size:.62rem;padding:4px 11px"><span class="live-dot" style="width:6px;height:6px"></span>MJ Active</span>
+    </div>
+    <div class="pal-search">
+      <i data-lucide="search"></i>
+      <input id="ai" placeholder="Ask MJ to run the next safe play&hellip;" spellcheck="false" type="text" aria-label="Admin command search"/>
+      <kbd>&#8984;K</kbd>
+    </div>
+    <div class="cmd-groups">
+
+      <!-- Orchestrate -->
+      <div class="cmd-group">
+        <h2 class="cg-title cg-coral">Orchestrate</h2>
+        <button class="cmd-row cr-coral" onclick="fire('MJ cloud shell opened')"><span class="ci ci-coral"><i data-lucide="terminal-square"></i></span><span><strong>Open MJ cloud shell</strong><small>Play-calling language</small></span><span class="lane ln-coral"></span></button>
+        <button class="cmd-row cr-coral" onclick="fire('Change request routed')"><span class="ci ci-coral"><i data-lucide="workflow"></i></span><span><strong>Create change request</strong><small>Route intent to lane</small></span><span class="lane ln-coral"></span></button>
+        <button class="cmd-row cr-coral" onclick="fire('Provider plan dispatched')"><span class="ci ci-coral"><i data-lucide="network"></i></span><span><strong>Dispatch provider plan</strong><small>Cloudflare, AWS, K8s</small></span><span class="lane ln-coral"></span></button>
+        <button class="cmd-row cr-coral" onclick="fire('Deployment queued')"><span class="ci ci-coral"><i data-lucide="git-branch"></i></span><span><strong>Queue deployment</strong><small>Staged rollout</small></span><span class="lane ln-coral"></span></button>
+        <button class="cmd-row cr-coral" onclick="fire('Rollback initiated')"><span class="ci ci-coral"><i data-lucide="rotate-ccw"></i></span><span><strong>Rollback release</strong><small>Instant revert</small></span><span class="lane ln-coral"></span></button>
+      </div>
+
+      <!-- Defend -->
+      <div class="cmd-group">
+        <h2 class="cg-title cg-teal">Defend</h2>
+        <button class="cmd-row cr-teal" onclick="fire('Runtime verification started')"><span class="ci ci-teal"><i data-lucide="shield-check"></i></span><span><strong>Run runtime verification</strong><small>Referee checks</small></span><span class="lane ln-teal"></span></button>
+        <button class="cmd-row cr-teal" onclick="fire('Drift scan initiated')"><span class="ci ci-teal"><i data-lucide="radar"></i></span><span><strong>Scan drift</strong><small>Watch the court</small></span><span class="lane ln-teal"></span></button>
+        <button class="cmd-row cr-teal" onclick="fire('Capability visa minted')"><span class="ci ci-teal"><i data-lucide="key-round"></i></span><span><strong>Mint capability visa</strong><small>Temporary permission</small></span><span class="lane ln-teal"></span></button>
+        <button class="cmd-row cr-teal" onclick="fire('Anomaly audit launched')"><span class="ci ci-teal"><i data-lucide="eye"></i></span><span><strong>Audit anomaly log</strong><small>Flag + triage</small></span><span class="lane ln-teal"></span></button>
+        <button class="cmd-row cr-teal" onclick="fire('WAF rules pushed')"><span class="ci ci-teal"><i data-lucide="shield-alert"></i></span><span><strong>Push WAF rule</strong><small>Firewall enforcement</small></span><span class="lane ln-teal"></span></button>
+      </div>
+
+      <!-- Productize -->
+      <div class="cmd-group">
+        <h2 class="cg-title cg-violet">Productize</h2>
+        <button class="cmd-row cr-violet" onclick="fire('Billing gate opened')"><span class="ci ci-violet"><i data-lucide="badge-dollar-sign"></i></span><span><strong>Open billing gate</strong><small>Stripe + kill switch</small></span><span class="lane ln-violet"></span></button>
+        <button class="cmd-row cr-violet" onclick="fire('Domain provisioning started')"><span class="ci ci-violet"><i data-lucide="globe-2"></i></span><span><strong>Provision custom domain</strong><small>CNAME + TLS state</small></span><span class="lane ln-violet"></span></button>
+        <button class="cmd-row cr-violet" onclick="fire('Tenant workload inspected')"><span class="ci ci-violet"><i data-lucide="cpu"></i></span><span><strong>Inspect tenant workload</strong><small>Dispatch namespace</small></span><span class="lane ln-violet"></span></button>
+        <button class="cmd-row cr-violet" onclick="fire('Feature flag toggled')"><span class="ci ci-violet"><i data-lucide="toggle-left"></i></span><span><strong>Toggle feature flag</strong><small>Canary or kill</small></span><span class="lane ln-violet"></span></button>
+        <button class="cmd-row cr-violet" onclick="fire('Pricing plan updated')"><span class="ci ci-violet"><i data-lucide="layers"></i></span><span><strong>Update pricing plan</strong><small>Tier management</small></span><span class="lane ln-violet"></span></button>
+      </div>
+
+      <!-- Tenant Ops -->
+      <div class="cmd-group">
+        <h2 class="cg-title cg-amber">Tenant Ops</h2>
+        <button class="cmd-row cr-amber" onclick="fire('Tenant namespace created')"><span class="ci ci-amber"><i data-lucide="plus-circle"></i></span><span><strong>Create tenant</strong><small>Isolated + scoped</small></span><span class="lane ln-amber"></span></button>
+        <button class="cmd-row cr-amber" onclick="fire('Tenant suspended')"><span class="ci ci-amber"><i data-lucide="pause-circle"></i></span><span><strong>Suspend tenant</strong><small>Billing or violation</small></span><span class="lane ln-amber"></span></button>
+        <button class="cmd-row cr-amber" onclick="fire('Tenant data exported')"><span class="ci ci-amber"><i data-lucide="download"></i></span><span><strong>Export tenant data</strong><small>GDPR compliant</small></span><span class="lane ln-amber"></span></button>
+        <button class="cmd-row cr-amber" onclick="fire('Usage report generated')"><span class="ci ci-amber"><i data-lucide="bar-chart-2"></i></span><span><strong>Usage report</strong><small>API + bandwidth</small></span><span class="lane ln-amber"></span></button>
+        <button class="cmd-row cr-amber" onclick="fire('Impersonation session started')"><span class="ci ci-amber"><i data-lucide="user-check"></i></span><span><strong>Impersonate tenant</strong><small>Debug as customer</small></span><span class="lane ln-amber"></span></button>
+      </div>
+
+    </div>
+  </section>
+
+  <p class="sec-label">Active Tenants</p>
+  <section class="tbl-wrap">
+    <div class="tbl-hdr">
+      <span class="tbl-ht">Tenant Roster</span>
+      <button class="act-btn" onclick="fire('New tenant onboarded')">+ Onboard Tenant</button>
+    </div>
+    <table>
+      <thead><tr><th>Tenant</th><th>Domain</th><th>Plan</th><th>API / Day</th><th>MRR</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Hitch App</td><td class="td-dom">hitch.broverse.io</td><td><span class="tplan tp-ent">Enterprise</span></td><td>18.4k</td><td>$1,200</td><td><span class="pill p-teal">active</span></td><td><button class="act-btn" onclick="fire('Hitch App inspected')">Inspect</button></td></tr>
+        <tr><td>Broverse Core</td><td class="td-dom">core.broverse.io</td><td><span class="tplan tp-ent">Enterprise</span></td><td>41.2k</td><td>$2,400</td><td><span class="pill p-teal">active</span></td><td><button class="act-btn" onclick="fire('Broverse Core inspected')">Inspect</button></td></tr>
+        <tr><td>Client Alpha</td><td class="td-dom">alpha.edge.io</td><td><span class="tplan tp-pro">Pro</span></td><td>3.1k</td><td>$480</td><td><span class="pill p-sky">watching</span></td><td><button class="act-btn" onclick="fire('Client Alpha inspected')">Inspect</button></td></tr>
+        <tr><td>Client Beta</td><td class="td-dom">beta.edge.io</td><td><span class="tplan tp-starter">Starter</span></td><td>890</td><td>$120</td><td><span class="pill p-amber">building</span></td><td><button class="act-btn" onclick="fire('Client Beta inspected')">Inspect</button></td></tr>
+        <tr><td>Dev Sandbox</td><td class="td-dom">sandbox.edge.io</td><td><span class="tplan tp-trial">Trial</span></td><td>120</td><td>$0</td><td><span class="pill p-violet">trial</span></td><td><button class="act-btn" onclick="fire('Sandbox inspected')">Inspect</button></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p class="sec-label">Live Activity Feed</p>
+  <section class="feed-wrap">
+    <div class="feed-hdr"><span class="feed-ht">System Events</span><span style="font-size:.68rem;color:var(--faint)">Auto-refreshing</span></div>
+    <ul class="feed-list">
+      <li class="feed-item"><span class="fdot fd-teal"></span><div><div class="feed-txt">Cloudflare DNS propagated for hitch.broverse.io</div><div class="feed-sub">Domain Authority &middot; TLS issued</div></div><span class="feed-t">2m ago</span></li>
+      <li class="feed-item"><span class="fdot fd-coral"></span><div><div class="feed-txt">Drift scan detected 1 config variance on K8s</div><div class="feed-sub">Runtime Verifier &middot; flagged for review</div></div><span class="feed-t">7m ago</span></li>
+      <li class="feed-item"><span class="fdot fd-violet"></span><div><div class="feed-txt">Feature flag "v2_chat" enabled for Client Alpha</div><div class="feed-sub">Productize &middot; canary rollout</div></div><span class="feed-t">14m ago</span></li>
+      <li class="feed-item"><span class="fdot fd-amber"></span><div><div class="feed-txt">Stripe billing gate wired to Broverse Core</div><div class="feed-sub">Financial Gate &middot; webhook live</div></div><span class="feed-t">31m ago</span></li>
+      <li class="feed-item"><span class="fdot fd-rose"></span><div><div class="feed-txt">WAF rule pushed — blocked 14 malformed requests</div><div class="feed-sub">Defend &middot; edge enforcement</div></div><span class="feed-t">44m ago</span></li>
+      <li class="feed-item"><span class="fdot fd-teal"></span><div><div class="feed-txt">Capability visa minted for deployment pipeline</div><div class="feed-sub">Defend &middot; 6hr TTL</div></div><span class="feed-t">58m ago</span></li>
+    </ul>
+  </section>
+
+</div><!-- /admin -->
+
+<!-- ══════════════════════════════════════
+     CUSTOMER VIEW
+══════════════════════════════════════ -->
+<div id="vp-customer" class="vp">
+
+  <p class="sec-label">Your Workspace</p>
+  <section class="pal-card">
+    <div class="pal-top">
+      <span class="pal-title pt-cust">Customer Portal &mdash; Your Controls</span>
+      <span class="live-pill" style="font-size:.62rem;padding:4px 11px"><span class="live-dot" style="width:6px;height:6px"></span>Connected</span>
+    </div>
+    <div class="pal-search">
+      <i data-lucide="search"></i>
+      <input id="ci-inp" placeholder="What do you want to build or check?" spellcheck="false" type="text" aria-label="Customer search"/>
+      <kbd>&#8984;K</kbd>
+    </div>
+    <div class="cmd-groups" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+
+      <!-- My Project -->
+      <div class="cmd-group">
+        <h2 class="cg-title cg-coral">My Project</h2>
+        <button class="cmd-row cr-coral" onclick="fire('Project shell opened')"><span class="ci ci-coral"><i data-lucide="terminal-square"></i></span><span><strong>Open project shell</strong><small>Your workspace</small></span><span class="lane ln-coral"></span></button>
+        <button class="cmd-row cr-coral" onclick="fire('Deployment triggered')"><span class="ci ci-coral"><i data-lucide="rocket"></i></span><span><strong>Deploy latest build</strong><small>Push to production</small></span><span class="lane ln-coral"></span></button>
+        <button class="cmd-row cr-coral" onclick="fire('Rollback initiated')"><span class="ci ci-coral"><i data-lucide="rotate-ccw"></i></span><span><strong>Rollback build</strong><small>Instant revert</small></span><span class="lane ln-coral"></span></button>
+        <button class="cmd-row cr-coral" onclick="fire('Domain manager opened')"><span class="ci ci-coral"><i data-lucide="globe-2"></i></span><span><strong>Manage domain</strong><small>CNAME + TLS</small></span><span class="lane ln-coral"></span></button>
+        <button class="cmd-row cr-coral" onclick="fire('Env vars opened')"><span class="ci ci-coral"><i data-lucide="lock"></i></span><span><strong>Edit env variables</strong><small>Secrets + config</small></span><span class="lane ln-coral"></span></button>
+      </div>
+
+      <!-- Integrations -->
+      <div class="cmd-group">
+        <h2 class="cg-title cg-violet">Integrations</h2>
+        <button class="cmd-row cr-violet" onclick="fire('Stripe integration opened')"><span class="ci ci-violet"><i data-lucide="badge-dollar-sign"></i></span><span><strong>Stripe connection</strong><small>Payments + billing</small></span><span class="lane ln-violet"></span></button>
+        <button class="cmd-row cr-violet" onclick="fire('Webhook manager opened')"><span class="ci ci-violet"><i data-lucide="zap"></i></span><span><strong>Webhook manager</strong><small>Events + delivery logs</small></span><span class="lane ln-violet"></span></button>
+        <button class="cmd-row cr-violet" onclick="fire('OAuth apps opened')"><span class="ci ci-violet"><i data-lucide="key-round"></i></span><span><strong>OAuth apps</strong><small>Third-party access</small></span><span class="lane ln-violet"></span></button>
+        <button class="cmd-row cr-violet" onclick="fire('API keys opened')"><span class="ci ci-violet"><i data-lucide="code-2"></i></span><span><strong>Manage API keys</strong><small>Create + revoke</small></span><span class="lane ln-violet"></span></button>
+        <button class="cmd-row cr-violet" onclick="fire('Notification hooks set')"><span class="ci ci-violet"><i data-lucide="bell"></i></span><span><strong>Notification hooks</strong><small>Slack, email, SMS</small></span><span class="lane ln-violet"></span></button>
+      </div>
+
+      <!-- Support & Billing -->
+      <div class="cmd-group">
+        <h2 class="cg-title cg-teal">Support &amp; Billing</h2>
+        <button class="cmd-row cr-teal" onclick="fire('Support ticket opened')"><span class="ci ci-teal"><i data-lucide="message-circle"></i></span><span><strong>Open support ticket</strong><small>Priority response</small></span><span class="lane ln-teal"></span></button>
+        <button class="cmd-row cr-teal" onclick="fire('System status checked')"><span class="ci ci-teal"><i data-lucide="activity"></i></span><span><strong>View system status</strong><small>Uptime + incidents</small></span><span class="lane ln-teal"></span></button>
+        <button class="cmd-row cr-teal" onclick="fire('Usage dashboard opened')"><span class="ci ci-teal"><i data-lucide="bar-chart-2"></i></span><span><strong>Check usage</strong><small>API + bandwidth</small></span><span class="lane ln-teal"></span></button>
+        <button class="cmd-row cr-teal" onclick="fire('Billing portal opened')"><span class="ci ci-teal"><i data-lucide="credit-card"></i></span><span><strong>Billing &amp; invoices</strong><small>Manage subscription</small></span><span class="lane ln-teal"></span></button>
+        <button class="cmd-row cr-teal" onclick="fire('Plan upgrade initiated')"><span class="ci ci-teal"><i data-lucide="arrow-up-circle"></i></span><span><strong>Upgrade plan</strong><small>Unlock more capacity</small></span><span class="lane ln-teal"></span></button>
+      </div>
+
+    </div>
+  </section>
+
+  <p class="sec-label">Quick Access</p>
+  <div class="cust-grid">
+    <div class="cust-card">
+      <div><div class="cc-title">Deployments</div><div class="cc-sub">Manage builds, rollbacks, and production releases.</div></div>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <button class="pa-row" onclick="fire('Deployment history opened')"><span class="pa-ico pai-teal"><i data-lucide="clock"></i></span><span class="pa-txt"><strong>Deployment history</strong><small>Last 30 deploys</small></span><span class="pa-arr"><i data-lucide="chevron-right"></i></span></button>
+        <button class="pa-row" onclick="fire('Build logs opened')"><span class="pa-ico pai-cobalt"><i data-lucide="file-text"></i></span><span class="pa-txt"><strong>Build logs</strong><small>Full output stream</small></span><span class="pa-arr"><i data-lucide="chevron-right"></i></span></button>
+        <button class="pa-row" onclick="fire('Rollback initiated')"><span class="pa-ico pai-coral"><i data-lucide="rotate-ccw"></i></span><span class="pa-txt"><strong>Rollback to previous</strong><small>Instant revert</small></span><span class="pa-arr"><i data-lucide="chevron-right"></i></span></button>
+      </div>
+    </div>
+    <div class="cust-card">
+      <div><div class="cc-title">Integrations</div><div class="cc-sub">Connect your tools &mdash; Stripe, webhooks, OAuth, and APIs.</div></div>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <button class="pa-row" onclick="fire('Stripe integration opened')"><span class="pa-ico pai-violet"><i data-lucide="badge-dollar-sign"></i></span><span class="pa-txt"><strong>Stripe connection</strong><small>Payments + billing</small></span><span class="pa-arr"><i data-lucide="chevron-right"></i></span></button>
+        <button class="pa-row" onclick="fire('Webhook manager opened')"><span class="pa-ico pai-amber"><i data-lucide="zap"></i></span><span class="pa-txt"><strong>Webhook manager</strong><small>Events + delivery logs</small></span><span class="pa-arr"><i data-lucide="chevron-right"></i></span></button>
+        <button class="pa-row" onclick="fire('API keys opened')"><span class="pa-ico pai-rose"><i data-lucide="code-2"></i></span><span class="pa-txt"><strong>API key manager</strong><small>Create + revoke tokens</small></span><span class="pa-arr"><i data-lucide="chevron-right"></i></span></button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /customer -->
+
+</div><!-- /shell -->
+</div><!-- /app-bg -->
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/lucide.min.js" integrity="sha384-hJnF5AwidE18GSWTAGHv3ByzzvfNZ1Tcx5y1UUV3WkauuMCEzBJBMSwSt/PUPXnM" crossorigin="anonymous"></script>
+<script>
+lucide.createIcons();
+
+function sw(v){
+  document.querySelectorAll('.vp').forEach(p=>p.classList.remove('on'));
+  document.getElementById('vp-'+v).classList.add('on');
+  document.querySelectorAll('.vtab').forEach(t=>{t.classList.toggle('active',t.dataset.view===v);t.setAttribute('aria-selected',t.dataset.view===v)});
+}
+
+let tt;
+function fire(msg){
+  const t=document.getElementById('toast');
+  t.textContent='\u2713 '+msg;
+  t.classList.add('show');
+  clearTimeout(tt);
+  tt=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+function bindSearch(id,scope){
+  const inp=document.getElementById(id);
+  if(!inp)return;
+  inp.addEventListener('input',()=>{
+    const q=inp.value.toLowerCase().trim();
+    document.querySelector(scope).querySelectorAll('.cmd-row').forEach(r=>{
+      const tx=r.querySelector('strong').textContent.toLowerCase()+r.querySelector('small').textContent.toLowerCase();
+      r.style.display=(!q||tx.includes(q))?'':'none';
+    });
+  });
+}
+bindSearch('ai','#vp-admin .pal-card');
+bindSearch('ci-inp','#vp-customer .pal-card');
+
+async function probeHealthz(){
+  const wrap=document.getElementById('hp-status');
+  const label=document.getElementById('hp-label');
+  if(!wrap||!label)return;
+  try{
+    const r=await fetch('/healthz',{cache:'no-store',method:'GET'});
+    let ok=false;
+    try{ok=r.ok&&(await r.clone().json()).status==='ok';}catch{ok=false;}
+    wrap.classList.remove('hp-unknown');
+    wrap.setAttribute('aria-busy','false');
+    if(ok){wrap.classList.add('hp-pass');label.textContent='Pass';}
+    else{wrap.classList.add('hp-fail');label.textContent='Fail';}
+  }catch{
+    wrap.classList.remove('hp-unknown');
+    wrap.classList.add('hp-offline');
+    wrap.setAttribute('aria-busy','false');
+    label.textContent='Offline preview';
+  }
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',probeHealthz);
+else probeHealthz();
+
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){
+    e.preventDefault();
+    const active=document.querySelector('.vp.on');
+    const inp=active&&active.querySelector('input');
+    if(inp)inp.focus();
+  }
+  if(e.key==='Escape')document.activeElement.blur();
+});
+</script>
+</body>
+</html>

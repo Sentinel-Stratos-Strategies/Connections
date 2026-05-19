@@ -105,7 +105,7 @@ def print_result(result: dict[str, Any], output_format: str) -> None:
     if output_format == "dashboard":
         print("MJ Edge Dashboard")
         print("-" * 40)
-        print(f"Response ID : {result.get("id", "n/a")}")
+        print(f"Response ID : {result.get('id', 'n/a')}")
         output_text = result.get("output_text")
         if output_text:
             print(f"Output      : {output_text}")

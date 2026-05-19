@@ -134,6 +134,19 @@
       "activation": "Use official OpenAI APIs/connectors for model and agent work; never expose API key values through MJ."
     },
     {
+      "lane": "mj-chatgpt",
+      "status": "ready_for_connector_scope",
+      "entrypoint": "https://mcp.ellis-aegis.us/api/genesis/mcp",
+      "consoleConnector": "ChatGPT",
+      "connectionMode": "chatgpt_connector",
+      "mcpTransport": "http",
+      "requiredSecrets": ["OPERATOR_TOKEN", "AEGIS_TOKEN"],
+      "requiredHeaders": ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
+      "allowedCapabilities": ["mcp.admin", "tool.call_approved", "forensic.read"],
+      "auditMode": "required",
+      "activation": "Use ChatGPT connector flows against the Cloudflare MJ endpoint with operator policy headers."
+    },
+    {
       "lane": "mj-figma",
       "status": "ready_for_connector_scope",
       "entrypoint": "https://mcp.ellis-aegis.us/mcp",
