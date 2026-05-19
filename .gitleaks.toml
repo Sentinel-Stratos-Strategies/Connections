@@ -1,0 +1,5 @@
+[allowlist]
+paths = [
+  "projects/mj-mcp-layer/mcp-layer/public/dashboard/vendor/lucide.min.js",
+  "projects/mj-mcp-layer/mcp-layer/public/dashboard/vendor/fonts/.*"
+]
