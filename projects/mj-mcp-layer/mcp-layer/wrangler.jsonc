@@ -1,0 +1,83 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mj-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-29",
+  "preview_urls": false,
+  "workers_dev": true,
+  "assets": {
+    "directory": "../frontend/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/healthz",
+      "/robots.txt",
+      "/mcp",
+      "/turn/*",
+      "/audit/*",
+      "/api/*"
+    ],
+  },
+  // Custom-domain routes are currently owned by the Cloudflare platform Worker
+  // `ellis-aegis-control-plane`. Keep this deploy lane on Workers.dev until an
+  // explicit route cutover is approved.
+  "observability": {
+    "enabled": true,
+  },
+  "vars": {
+    "APP_NAME": "mj-edge",
+    "APP_ENV": "production",
+    "ZONE_NAME": "ellis-aegis.us",
+    "PUBLIC_BASE_URL": "https://mcp.ellis-aegis.us",
+    "ALLOWED_ORIGINS": "https://mj.ellis-aegis.us,https://mcp.ellis-aegis.us,https://codex.ellis-aegis.us",
+    "OPERATOR_HEADER": "x-ellis-aegis-token",
+  },
+  // Durable Object migrations — required to retire classes removed from previous deployments.
+  "migrations": [
+    {
+      "tag": "v2",
+      "deleted_classes": ["SessionObject"],
+    },
+  ],
+
+  "triggers": {
+    "crons": ["0 */2 * * *", "15 6 * * *"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ellis-aegis-control-plane",
+      "database_id": "5fe110fa-5bc8-4925-a5d5-2ca08c5bee5b",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "FLAGS",
+      "id": "5a7fbf6b63bf4b02bb14ab7cd3d2f521",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "EVIDENCE_BUCKET",
+      "bucket_name": "ellis-aegis-evidence",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "WATCHER_QUEUE",
+        "queue": "ellis-aegis-watchers",
+      },
+    ],
+    // The shared watcher queue is currently consumed by the Cloudflare platform
+    // Worker `ellis-aegis-control-plane`; this lane only produces jobs.
+  },
+
+  // Uncomment after Email Routing is enabled and your destination address is verified.
+  // "send_email": [
+  //   {
+  //     "name": "ALERT_EMAIL",
+  //     "destination_address": "operator@ellis-aegis.us"
+  //   }
+  // ]
+}

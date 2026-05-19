@@ -1,0 +1,44 @@
+{
+  "lane": "mj-github",
+  "platform": "github",
+  "purpose": "Coordinate approved repository, issue, pull request, branch, and CI/CD workflows with least-privilege permissions and audit visibility.",
+  "owner": "Sentinel",
+  "authMode": "github_oidc",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "repo.read",
+    "file.read",
+    "branch.read",
+    "branch.create",
+    "issue.read",
+    "issue.create",
+    "issue.comment",
+    "pr.read",
+    "pr.create",
+    "pr.comment",
+    "workflow.status_read"
+  ],
+  "deniedActions": [
+    "repo.delete",
+    "org.permission.escalate",
+    "secret.read",
+    "secret.value_reveal",
+    "branch.force_push_main"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "file.write",
+    "pr.merge",
+    "workflow.rerun",
+    "branch.delete",
+    "release.publish",
+    "production_deploy"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_repositories_only",
+    "externalWrite": "branch_pr_issue_workflows_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

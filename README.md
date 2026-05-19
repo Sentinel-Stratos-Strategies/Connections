@@ -68,6 +68,16 @@ This repository should not be used to expose sensitive login histories or recove
 
 Initial implementation lives in `projects/macos-gui-openai-bridge/` and provides starter kit schemas and a CLI bridge for mapping supported artifacts into OpenAI API resources.
 
+### 2) MJ MCP Layer (MJ_Layer branch)
+
+Enterprise-grade MCP Edge Routing & Multi-Tenant Policy Enforcement platform in `projects/mj-mcp-layer/`:
+
+- **Cloudflare Worker** — MCP protocol endpoints (`/mcp`, `/turn`, `/audit`, `/healthz`), change request intake, immutable ledger
+- **Platform SDK** — Provider-agnostic orchestration (Cloudflare, AWS, Kubernetes adapters), universal ledger, drift scanner, compliance checker
+- **Hardening Automation** — WAF, rate limiting, cache, bot posture scripts with error trapping, idempotency markers, and rotation enforcement
+- **GitOps Manifests** — Per-zone, per-tenant, per-policy YAML configuration
+- **CI/CD Workflows** — Automated deploy + drift scan every 6 hours
+
 ### OpenAI skillset playbook
 
 See `docs/openai-skillset-playbook.md` for the documentation-grounded workflow for Codex/CLI-based kit authoring, validation, MCP connectors, and OpenAI backend pushes.

@@ -1,0 +1,29 @@
+{
+  "lane": "mj-diggs",
+  "persona": "diggs",
+  "displayName": "Dick Diggs",
+  "model": "gemma3:4b",
+  "bridge": "mj-local-models-bridge",
+  "endpoint": "http://127.0.0.1:11437/mcp",
+  "tool": "diggs.infer",
+  "memory": {
+    "tenantId": "local-diggs",
+    "mode": "doc_projection",
+    "localRoot": "/Volumes/SENTINEL/memory/personas/diggs",
+    "cloudflareScope": "r2_projection/personas/diggs",
+    "vectorNamespace": "mj_diggs",
+    "truthPromotion": "approval_required"
+  },
+  "mjToolCatalog": [
+    "console_lanes",
+    "memory.route",
+    "memory.projection.read",
+    "doc.read",
+    "forensic.read",
+    "perplexity.search.query",
+    "scite.research.query"
+  ],
+  "sourceContext": [
+    "/Volumes/Stratos_Tools/projects/GENESIS_MEMORY/training_runs/gemma"
+  ]
+}

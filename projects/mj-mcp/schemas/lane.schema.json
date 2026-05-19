@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ellis-aegis.us/schemas/mj-mcp/lane.schema.json",
+  "title": "MJ MCP Lane Manifest",
+  "type": "object",
+  "required": [
+    "lane",
+    "platform",
+    "purpose",
+    "owner",
+    "authMode",
+    "memoryMode",
+    "allowedActions",
+    "deniedActions",
+    "requiresAudit",
+    "requiresApprovalFor",
+    "dataBoundaries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "lane": { "type": "string", "pattern": "^mj-[a-z0-9-]+$" },
+    "platform": { "type": "string" },
+    "purpose": { "type": "string" },
+    "owner": { "type": "string" },
+    "authMode": {
+      "type": "string",
+      "enum": [
+        "api_key",
+        "oauth",
+        "service_account",
+        "cloudflare_access",
+        "github_oidc",
+        "mcp_connector",
+        "hybrid"
+      ]
+    },
+    "memoryMode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "projection_only",
+        "deployment_projection",
+        "issue_projection",
+        "doc_projection",
+        "audit_only"
+      ]
+    },
+    "allowedActions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "deniedActions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "requiresAudit": { "type": "boolean" },
+    "requiresApprovalFor": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "dataBoundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "externalRead": { "type": "string" },
+        "externalWrite": { "type": "string" },
+        "truthWrite": { "type": "string" },
+        "secretHandling": { "type": "string" },
+        "logPayloads": { "type": "boolean" }
+      },
+      "required": ["externalRead", "externalWrite", "truthWrite", "secretHandling", "logPayloads"]
+    },
+    "mcpConnection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transport": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "requiredHeaders": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "authHeader": { "type": "string" },
+        "authScheme": { "type": "string" }
+      },
+      "required": ["transport", "endpoint", "requiredHeaders", "authHeader", "authScheme"]
+    }
+  }
+}

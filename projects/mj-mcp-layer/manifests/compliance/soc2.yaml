@@ -1,0 +1,56 @@
+framework: soc2
+version: "2017"
+controls:
+  - control_id: CC6.1
+    control_name: Logical and Physical Access Controls
+    description: Access to protected information assets is restricted to authorized users
+    required: true
+    evidence_sources:
+      - type: capability_visa
+        description: Short-lived scoped access tokens with TTL and mutation limits
+        query: all visas issued in period
+      - type: mutation_budget
+        description: Per-actor mutation spending limits and enforcement records
+        query: all budget checks in period
+      - type: agent_reputation
+        description: Agent trust scores and automated policy enforcement
+        query: all agent reputations
+
+  - control_id: CC6.3
+    control_name: Access Removal
+    description: Access is removed when no longer needed
+    required: true
+    evidence_sources:
+      - type: capability_visa
+        description: Visa expiration and revocation records showing time-bound access
+        query: expired and revoked visas in period
+
+  - control_id: CC7.2
+    control_name: System Monitoring
+    description: System anomalies and events are detected and monitored
+    required: true
+    evidence_sources:
+      - type: drift_scan
+        description: Scheduled drift detection scans every 6 hours
+        query: all drift scan reports in period
+      - type: runtime_verification
+        description: Live policy verification against runtime behavior
+        query: all verification results in period
+      - type: antibody
+        description: Drift immune system antibody matches and responses
+        query: all antibody hits in period
+
+  - control_id: CC8.1
+    control_name: Change Management
+    description: Changes are authorized, designed, developed, tested, and approved before implementation
+    required: true
+    evidence_sources:
+      - type: change_request
+        description: Change requests with validation, preview, approval, and signed receipts
+        query: all change requests in period
+      - type: evidence_bundle
+        description: Signed deployment evidence bundles with before/after inventory
+        query: all evidence bundles in period
+      - type: ledger_entry
+        description: HMAC-SHA256 signed immutable ledger entries
+        query: all ledger entries in period

@@ -1,0 +1,55 @@
+# Curated git roots on SENTINEL → bare repos on /Volumes/Strat_Tools/repos
+# Excludes: homebrew, pyenv, .cursor plugin caches, salvage/Logs, Claude marketplace clones.
+
+# Developer
+/Volumes/SENTINEL/Developer/01_OpenAI_Advanced/CodexBar
+/Volumes/SENTINEL/Developer/01_OpenAI_Advanced/openai-python
+/Volumes/SENTINEL/Developer/01_OpenAI_Advanced/openai-apps-sdk-examples
+/Volumes/SENTINEL/Developer/01_Apple_Foundation_Models/cupertino-sample-code
+/Volumes/SENTINEL/Developer/01_Apple_Foundation_Models/mlx-swift-lm
+/Volumes/SENTINEL/Developer/01_Apple_Foundation_Models/PokeIntents
+/Volumes/SENTINEL/Developer/01_Apple_Foundation_Models/Booky
+/Volumes/SENTINEL/Developer/02_AI_Bridge/mlx-swift-lm
+/Volumes/SENTINEL/Developer/02_AI_Bridge/PokeIntents
+/Volumes/SENTINEL/Developer/02_AI_Bridge/Booky
+/Volumes/SENTINEL/Developer/02_Apple_PCC/security-pcc
+/Volumes/SENTINEL/Developer/03_Gemini_Nano/generative-ai
+/Volumes/SENTINEL/Developer/03_Gemini_Nano/cookbook
+/Volumes/SENTINEL/Developer/04_Search_Logic/ai
+/Volumes/SENTINEL/Developer/mcp-servers/applescript-mcp
+/Volumes/SENTINEL/Developer/mcp-servers/macos-automator-mcp
+/Volumes/SENTINEL/Developer/sdk-docs/mcp/official-servers
+/Volumes/SENTINEL/Developer/sdk-docs/applescript-mcp/macos-automator-source
+/Volumes/SENTINEL/Developer/sdk-docs/applescript-mcp/source
+
+# Genesis / memory / imports
+/Volumes/SENTINEL/genesis-command-center
+/Volumes/SENTINEL/GENESIS:MEMORY
+/Volumes/SENTINEL/User-Imports/Crucifix-pre-sentinel-move
+/Volumes/SENTINEL/User-Imports/New project
+
+# Top-level projects (added after first migration pass)
+/Volumes/SENTINEL/Strategies_Searcher
+/Volumes/SENTINEL/Ellis-Aegis
+/Volumes/SENTINEL/ClaudeRoot
+/Volumes/SENTINEL/memory
+/Volumes/SENTINEL/Sentinel_Context
+/Volumes/SENTINEL/Projects
+/Volumes/SENTINEL/TRUTH_REPORTS
+/Volumes/SENTINEL/mcp-servers/dispatch-approval
+
+/Volumes/SENTINEL/TRUTH_APP/TRUTHWrapper
+/Volumes/SENTINEL/open-skills
+
+# Android / iOS / tools
+/Volumes/SENTINEL/Android_Arsenal/wifite2
+/Volumes/SENTINEL/Android_Arsenal/platform-tools/mtkclient
+/Volumes/SENTINEL/Pixel_10a/tools/platform-tools/mtkclient
+/Volumes/SENTINEL/mtkclient
+/Volumes/SENTINEL/iOS_Arsenal/SSHRD_Script
+/Volumes/SENTINEL/iOS_Arsenal/SSHRD_Script/sshtars
+/Volumes/SENTINEL/AgentWork/strat-tools/sentinel-iphone13-harbor
+
+# Comet / Perplexity MCP hub + Macro Terminal
+/Volumes/SENTINEL/Comet_Pplx_Mcp
+/Volumes/SENTINEL/Hitch

@@ -1,0 +1,56 @@
+{
+  "lane": "mj-diggs",
+  "platform": "local-gemma",
+  "purpose": "Dedicated Dick Diggs lane for Gemma-powered research, source-grounded synthesis, document triage, and fast intelligence work. Diggs has its own memory projection and cannot read Marvin or Harbor persona stores.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "diggs.infer",
+    "model.health",
+    "memory.projection.read",
+    "memory.persona.snapshot",
+    "mj.tools.list",
+    "mj.tools.describe",
+    "doc.read",
+    "research.summarize",
+    "forensic.read"
+  ],
+  "deniedActions": [
+    "external_api.call",
+    "secret.read",
+    "model.push_external",
+    "file.write_outside_scope",
+    "network.egress_unrestricted",
+    "permission.escalate",
+    "training.run_without_approval",
+    "persona.cross_memory_read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "model.pull",
+    "training.run",
+    "persona.context_overwrite",
+    "bridge.restart",
+    "memory.truth.promote"
+  ],
+  "dataBoundaries": {
+    "externalRead": "denied",
+    "externalWrite": "denied",
+    "truthWrite": "internal_only_after_approval",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  },
+  "mcpConnection": {
+    "transport": "http",
+    "endpoint": "http://127.0.0.1:11437/mcp",
+    "requiredHeaders": {
+      "x-tenant-id": "local-diggs",
+      "x-request-id": "required",
+      "x-policy-version": "mj-local-persona-v1",
+      "x-operator-capability": "forensic.read"
+    },
+    "authHeader": "x-mj-local-models-token",
+    "authScheme": "local_bearer"
+  }
+}
