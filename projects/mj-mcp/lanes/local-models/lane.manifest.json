@@ -1,0 +1,43 @@
+{
+  "lane": "mj-local-models",
+  "platform": "ollama-local",
+  "purpose": "Air-gapped local inference via Ollama on Stratos_Tools. Exposes three named personas — Marvin (Qwen, primary coding/architecture agent), Harbor (Mistral Nemo, memory and operator context), and Dick Diggs (Gemma, research and analysis) — as MCP tools accessible to Zed, Cursor, and Codex with zero API cost and full data-sovereignty.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "persona.list",
+    "persona.select",
+    "persona.infer",
+    "model.list",
+    "model.health",
+    "marvin.infer",
+    "harbor.infer",
+    "diggs.infer",
+    "training.status",
+    "context.load"
+  ],
+  "deniedActions": [
+    "external_api.call",
+    "secret.read",
+    "model.push_external",
+    "file.write_outside_scope",
+    "network.egress_unrestricted",
+    "permission.escalate",
+    "training.run_without_approval"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "model.pull",
+    "training.run",
+    "persona.context_overwrite",
+    "bridge.restart"
+  ],
+  "dataBoundaries": {
+    "externalRead": "denied",
+    "externalWrite": "denied",
+    "truthWrite": "local_only",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

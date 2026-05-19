@@ -1,0 +1,27 @@
+version: 2
+name: mj-edge-unified-v2
+allowed_paths:
+  - /mcp
+  - /turn/*
+  - /audit/*
+  - /healthz
+method_matrix:
+  /mcp: [GET, POST, OPTIONS]
+  /turn/*: [POST, OPTIONS]
+  /audit/*: [GET, OPTIONS]
+  /healthz: [GET]
+required_headers:
+  - x-tenant-id
+  - x-request-id
+  - x-policy-version
+  - x-operator-capability
+security_controls:
+  waf: true
+  ratelimit: true
+  cache_bypass_dynamic: true
+  bot_mcp_exemption: true
+  deny_by_default: true
+audit:
+  log_decisions: true
+  log_tool_actions: true
+  immutable_ledger: true

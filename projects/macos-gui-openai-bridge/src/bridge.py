@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compliant bridge for mapping local kits to OpenAI API resources."""
+"""Compliant bridge for mapping local kits to OpenAI Responses API resources."""
 
 from __future__ import annotations
 
@@ -12,7 +12,10 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+OUTPUT_FORMATS = ("json", "dashboard")
+
 API_BASE = "https://api.openai.com/v1"
+MAX_KIT_BYTES = 1_000_000
 
 
 class ValidationError(Exception):
@@ -20,6 +23,10 @@ class ValidationError(Exception):
 
 
 def load_json(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise ValidationError(f"File not found: {path}")
+    if path.stat().st_size > MAX_KIT_BYTES:
+        raise ValidationError(f"Kit file exceeds {MAX_KIT_BYTES} bytes")
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
@@ -52,7 +59,14 @@ def validate_widget_kit(payload: dict[str, Any]) -> None:
     require_fields(payload, ["name", "version", "entrypoints"])
 
 
-def request(path: str, body: dict[str, Any], api_key: str, method: str = "POST") -> dict[str, Any]:
+def validate_check_kit(payload: dict[str, Any]) -> None:
+    require_fields(payload, ["name", "version", "checks"])
+    checks = payload["checks"]
+    if not isinstance(checks, list) or not checks:
+        raise ValidationError("checks must be a non-empty list")
+
+
+def post(path: str, body: dict[str, Any], api_key: str) -> dict[str, Any]:
     req = urllib.request.Request(
         f"{API_BASE}{path}",
         data=json.dumps(body).encode("utf-8"),
@@ -60,69 +74,49 @@ def request(path: str, body: dict[str, Any], api_key: str, method: str = "POST")
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
-        method=method,
+        method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=45) as response:  # nosec B310
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         details = exc.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"HTTP {exc.code}: {details}") from exc
 
 
-def push_agent(payload: dict[str, Any], api_key: str) -> None:
-    body = {
-        "name": payload["name"],
-        "model": payload["model"],
-        "instructions": payload["instructions"],
-        "tools": payload.get("tools", []),
-        "metadata": payload.get("metadata", {}),
-    }
-    result = request("/assistants", body, api_key)
-    print(json.dumps({"assistant_id": result.get("id")}, indent=2))
-
-
-def push_thread(payload: dict[str, Any], api_key: str) -> None:
-    thread = request("/threads", {}, api_key)
-    thread_id = thread.get("id")
-    if not thread_id:
-        raise RuntimeError("Thread creation did not return an id")
-
-    for message in payload["messages"]:
-        request(
-            f"/threads/{thread_id}/messages",
-            {"role": message["role"], "content": message["content"]},
-            api_key,
-        )
-
-    print(json.dumps({"thread_id": thread_id, "message_count": len(payload["messages"])}, indent=2))
-
-
-def run_response(payload: dict[str, Any], api_key: str, user_input: str, mcp_server_url: str | None) -> None:
+def build_agent_tools(payload: dict[str, Any]) -> list[dict[str, Any]]:
     tools: list[dict[str, Any]] = payload.get("tools", [])
-    if mcp_server_url:
-        tools.append(
-            {
-                "type": "mcp",
-                "server_label": payload.get("name", "kit_mcp").replace(" ", "_").lower(),
-                "server_url": mcp_server_url,
-                "allowed_tools": ["search", "fetch"],
-                "require_approval": "never",
-            }
-        )
+    if not isinstance(tools, list):
+        raise ValidationError("tools must be a list when provided")
+    for index, tool in enumerate(tools):
+        if not isinstance(tool, dict):
+            raise ValidationError(f"tools[{index}] must be an object")
+    return tools
 
-    body = {
-        "model": payload["model"],
-        "instructions": payload["instructions"],
-        "input": user_input,
-        "tools": tools,
-    }
-    result = request("/responses", body, api_key)
+
+def build_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+    metadata = payload.get("metadata", {})
+    if not isinstance(metadata, dict):
+        raise ValidationError("metadata must be an object when provided")
+    return metadata
+
+
+def print_result(result: dict[str, Any], output_format: str) -> None:
+    if output_format == "dashboard":
+        print("MJ Edge Dashboard")
+        print("-" * 40)
+        print(f"Response ID : {result.get('id', 'n/a')}")
+        output_text = result.get("output_text")
+        if output_text:
+            print(f"Output      : {output_text}")
+        else:
+            print("Output      : (empty)")
+        return
+
     print(
         json.dumps(
             {
                 "response_id": result.get("id"),
-                "status": result.get("status"),
                 "output_text": result.get("output_text"),
             },
             indent=2,
@@ -130,24 +124,89 @@ def run_response(payload: dict[str, Any], api_key: str, user_input: str, mcp_ser
     )
 
 
+def push_agent(payload: dict[str, Any], api_key: str, store: bool, output_format: str) -> None:
+    body: dict[str, Any] = {
+        "model": payload["model"],
+        "instructions": payload["instructions"],
+        "input": payload.get("bootstrap_input", f"Initialize agent profile: {payload['name']}"),
+        "tools": build_agent_tools(payload),
+        "metadata": build_metadata(payload),
+        "store": store,
+    }
+    result = post("/responses", body, api_key)
+    print_result(result, output_format)
+
+
+def push_thread(payload: dict[str, Any], api_key: str, store: bool, previous_response_id: str | None, output_format: str) -> None:
+    messages = payload["messages"]
+    conversation_input = [{"role": item["role"], "content": item["content"]} for item in messages]
+
+    body: dict[str, Any] = {
+        "model": payload.get("model", "gpt-5"),
+        "input": conversation_input,
+        "store": store,
+    }
+    if previous_response_id:
+        body["previous_response_id"] = previous_response_id
+
+    result = post("/responses", body, api_key)
+    print_result(result, output_format)
+
+
+def push_widget_kit(payload: dict[str, Any], api_key: str, store: bool, output_format: str) -> None:
+    function_tool = {
+        "type": "function",
+        "name": "register_widget_kit",
+        "description": "Register a widget kit manifest in backend deployment systems.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "version": {"type": "string"},
+                "entrypoints": {"type": "object"},
+            },
+            "required": ["name", "version", "entrypoints"],
+            "additionalProperties": False,
+        },
+    }
+
+    body = {
+        "model": payload.get("model", "gpt-5"),
+        "input": (
+            "Prepare registration arguments for this widget kit and call register_widget_kit with schema-valid JSON."
+        ),
+        "tools": [function_tool],
+        "store": store,
+        "metadata": build_metadata(payload),
+    }
+    result = post("/responses", body, api_key)
+    print_result(result, output_format)
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Codex/macOS to OpenAI API kit bridge")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     validate_cmd = subparsers.add_parser("validate")
-    validate_cmd.add_argument("--kind", choices=["agent", "thread", "widget"], required=True)
+    validate_cmd.add_argument("--kind", choices=["agent", "thread", "widget", "check"], required=True)
     validate_cmd.add_argument("--file", required=True)
 
     push_agent_cmd = subparsers.add_parser("push-agent")
     push_agent_cmd.add_argument("--file", required=True)
+    push_agent_cmd.add_argument("--no-store", action="store_true")
+    push_agent_cmd.add_argument("--output-format", choices=OUTPUT_FORMATS, default="dashboard")
 
     push_thread_cmd = subparsers.add_parser("push-thread")
     push_thread_cmd.add_argument("--file", required=True)
+    push_thread_cmd.add_argument("--previous-response-id")
+    push_thread_cmd.add_argument("--no-store", action="store_true")
+    push_thread_cmd.add_argument("--output-format", choices=OUTPUT_FORMATS, default="dashboard")
 
-    run_cmd = subparsers.add_parser("run-agent")
-    run_cmd.add_argument("--file", required=True)
-    run_cmd.add_argument("--input", required=True)
-    run_cmd.add_argument("--mcp-server-url", required=False)
+    push_widget_cmd = subparsers.add_parser("push-widget")
+    push_widget_cmd.add_argument("--file", required=True)
+    push_widget_cmd.add_argument("--no-store", action="store_true")
+    push_widget_cmd.add_argument("--output-format", choices=OUTPUT_FORMATS, default="dashboard")
 
     args = parser.parse_args(argv)
     payload = load_json(Path(args.file))
@@ -157,6 +216,8 @@ def main(argv: list[str]) -> int:
             validate_agent_kit(payload)
         elif args.kind == "thread":
             validate_thread_kit(payload)
+        elif args.kind == "check":
+            validate_check_kit(payload)
         else:
             validate_widget_kit(payload)
         print("Validation successful")
@@ -169,13 +230,19 @@ def main(argv: list[str]) -> int:
 
     if args.command == "push-agent":
         validate_agent_kit(payload)
-        push_agent(payload, api_key)
+        push_agent(payload, api_key, store=not args.no_store, output_format=args.output_format)
     elif args.command == "push-thread":
         validate_thread_kit(payload)
-        push_thread(payload, api_key)
-    elif args.command == "run-agent":
-        validate_agent_kit(payload)
-        run_response(payload, api_key, args.input, args.mcp_server_url)
+        push_thread(
+            payload,
+            api_key,
+            store=not args.no_store,
+            previous_response_id=args.previous_response_id,
+            output_format=args.output_format,
+        )
+    elif args.command == "push-widget":
+        validate_widget_kit(payload)
+        push_widget_kit(payload, api_key, store=not args.no_store, output_format=args.output_format)
 
     return 0
 

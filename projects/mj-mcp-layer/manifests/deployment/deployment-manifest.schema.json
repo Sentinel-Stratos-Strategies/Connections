@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ellis-aegis.us/schemas/mj-mcp-layer/deployment-manifest.schema.json",
+  "title": "MJ MCP Layer Deployment Manifest",
+  "type": "object",
+  "required": [
+    "version",
+    "generated_at",
+    "git",
+    "runtime",
+    "routes",
+    "storage_bindings",
+    "protected_routes",
+    "smoke_results",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "git": {
+      "type": "object",
+      "required": ["sha", "branch", "dirty"],
+      "additionalProperties": false,
+      "properties": {
+        "sha": { "type": "string", "minLength": 7 },
+        "branch": { "type": "string", "minLength": 1 },
+        "dirty": { "type": "boolean" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["name", "authority_zone", "public_base_url", "workers_dev", "compatibility_date"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "authority_zone": { "type": "string", "minLength": 1 },
+        "public_base_url": { "type": "string", "minLength": 1 },
+        "workers_dev": { "type": "boolean" },
+        "compatibility_date": { "type": "string", "minLength": 10 }
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pattern", "zone_name"],
+        "additionalProperties": false,
+        "properties": {
+          "pattern": { "type": "string" },
+          "zone_name": { "type": "string" }
+        }
+      }
+    },
+    "storage_bindings": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "protected_routes": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "smoke_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "ok"],
+        "additionalProperties": true,
+        "properties": {
+          "name": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "status": { "type": "integer" },
+          "error": { "type": "string" }
+        }
+      }
+    },
+    "status": { "type": "string", "enum": ["go", "no-go"] }
+  }
+}

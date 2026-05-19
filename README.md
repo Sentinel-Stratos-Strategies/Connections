@@ -68,9 +68,22 @@ This repository should not be used to expose sensitive login histories or recove
 
 Initial implementation lives in `projects/macos-gui-openai-bridge/` and provides starter kit schemas and a CLI bridge for mapping supported artifacts into OpenAI API resources.
 
+### 2) MJ MCP Layer (MJ_Layer branch)
 
-## Builder Skill Assets
+Enterprise-grade MCP Edge Routing & Multi-Tenant Policy Enforcement platform in `projects/mj-mcp-layer/`:
 
-- `skills/openai-platform-builder/SKILL.md` for reusable CLI skill workflow.
-- `projects/macos-gui-openai-bridge/OPENAI_BACKEND_SKILLSET.md` for documentation-based implementation mapping.
-- `templates/claude-codex-openai-workflow.md` for command-ready workflow steps.
+- **Cloudflare Worker** — MCP protocol endpoints (`/mcp`, `/turn`, `/audit`, `/healthz`), change request intake, immutable ledger
+- **Platform SDK** — Provider-agnostic orchestration (Cloudflare, AWS, Kubernetes adapters), universal ledger, drift scanner, compliance checker
+- **Hardening Automation** — WAF, rate limiting, cache, bot posture scripts with error trapping, idempotency markers, and rotation enforcement
+- **GitOps Manifests** — Per-zone, per-tenant, per-policy YAML configuration
+- **CI/CD Workflows** — Automated deploy + drift scan every 6 hours
+
+### OpenAI skillset playbook
+
+See `docs/openai-skillset-playbook.md` for the documentation-grounded workflow for Codex/CLI-based kit authoring, validation, MCP connectors, and OpenAI backend pushes.
+
+## MJ Edge frontend branch
+
+A new customer/admin frontend prototype lives at `projects/mj-edge-dashboard/index.html` for tenant usage and subscription monitoring.
+
+CI now runs bridge compile + unit tests via `.github/workflows/ci.yml`.

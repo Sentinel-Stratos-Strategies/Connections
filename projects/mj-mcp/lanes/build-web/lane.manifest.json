@@ -1,0 +1,35 @@
+{
+  "lane": "mj-build-web",
+  "platform": "build-web-apps",
+  "purpose": "Coordinate approved frontend implementation, dashboard QA, browser validation, Stripe guidance, and React/Vite production checks.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "frontend.implement",
+    "react.review",
+    "browser.qa",
+    "vite.build",
+    "stripe.plan",
+    "accessibility.check"
+  ],
+  "deniedActions": [
+    "payment_secret_read",
+    "customer_data_dump",
+    "production_payment_change_without_approval",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "production_ui_deploy",
+    "billing_flow_change",
+    "external_script_add"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_web_projects_only",
+    "externalWrite": "repo_patch_and_preview_actions_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

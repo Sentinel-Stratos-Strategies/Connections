@@ -1,0 +1,62 @@
+{
+  "policyName": "mj-mcp-platform-permissions",
+  "version": "0.1.0",
+  "defaultDecision": "deny",
+  "principles": [
+    "least_privilege",
+    "deny_by_default",
+    "audit_by_default",
+    "projection_memory_by_default",
+    "human_approval_for_high_risk_actions",
+    "no_sideways_lane_calls"
+  ],
+  "riskClasses": {
+    "low": [
+      "read_metadata",
+      "read_status",
+      "create_projection",
+      "comment_create"
+    ],
+    "medium": [
+      "issue_create",
+      "preview_deploy",
+      "doc_update",
+      "branch_create"
+    ],
+    "high": [
+      "production_deploy",
+      "environment_update",
+      "bulk_update",
+      "schema_update",
+      "external_share"
+    ],
+    "critical": [
+      "permission_escalate",
+      "secret_value_read",
+      "domain_transfer",
+      "workspace_export_all",
+      "truth_write_external",
+      "account_delete"
+    ]
+  },
+  "globalDeniedActions": [
+    "secret.read",
+    "secret.value_reveal",
+    "permission.escalate",
+    "hidden_endpoint.call",
+    "policy_control.bypass",
+    "workspace.export_all",
+    "truth.write_external"
+  ],
+  "approvalRequiredFor": [
+    "production_deploy",
+    "dns.update",
+    "env.update",
+    "service_account.create",
+    "iam.update",
+    "bulk_delete",
+    "bulk_update",
+    "external_share",
+    "schema_migration_remote"
+  ]
+}

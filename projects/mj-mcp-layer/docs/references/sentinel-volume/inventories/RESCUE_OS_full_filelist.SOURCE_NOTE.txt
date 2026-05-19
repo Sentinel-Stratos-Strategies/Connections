@@ -1,0 +1,8 @@
+# RESCUE_OS_full_filelist_20260511.txt is not copied into this repository.
+
+# Reason: ~65 MB single-file salvage inventory (unsuitable for normal git history).
+
+# Canonical location on the Sentinel volume:
+#   /Volumes/SENTINEL/Manifests/RESCUE_OS_full_filelist_20260511.txt
+
+# Snapshot date in filename: 2026-05-11

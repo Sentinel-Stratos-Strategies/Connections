@@ -1,0 +1,54 @@
+{
+  "lane": "mj-cursor",
+  "platform": "cursor",
+  "purpose": "Enable Cursor to act as an approved MCP operator for code authoring, repository context, terminal workflows, and approved tool calls through the MJ control plane.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "projection_only",
+  "allowedActions": [
+    "code.read",
+    "code.plan",
+    "code.patch_propose",
+    "terminal.command_prepare",
+    "project.context_read",
+    "mcp.connector.list",
+    "mcp.connector.call_approved",
+    "thread.read",
+    "tool.call_approved"
+  ],
+  "deniedActions": [
+    "hidden_endpoint.call",
+    "unauthorized_ui_automation",
+    "secret.read",
+    "policy_control.bypass",
+    "bulk_file_delete",
+    "production_deploy_without_approval"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "code.patch_apply",
+    "mcp.connector.add_external",
+    "terminal.command_execute",
+    "file.write_production",
+    "repo.settings_update"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_local_and_connector_scope_only",
+    "externalWrite": "explicit_user_triggered_only",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  },
+  "mcpConnection": {
+    "transport": "http",
+    "endpoint": "https://mcp.ellis-aegis.us/mcp",
+    "requiredHeaders": {
+      "x-tenant-id": "operator",
+      "x-policy-version": "mj-edge-unified-v2",
+      "x-operator-capability": "mcp.admin",
+      "x-request-id": "generated_per_request"
+    },
+    "authHeader": "x-ellis-aegis-token",
+    "authScheme": "Bearer"
+  }
+}

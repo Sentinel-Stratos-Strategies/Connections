@@ -1,0 +1,61 @@
+version: 2
+domain: kevis.online
+provider: cloudflare
+status: transfer_or_dns_pending
+authority_model: mj_first
+owner_authority_zone: ellis-aegis.us
+
+public_surface:
+  launch_posture: mj_controlled_holding_or_sales_surface_until_app_ready
+  pages_project: kevis-web
+  pages_preview_verified: https://0d2bd0b9.kevis-web.pages.dev
+  expose_pages_on_apex_now: false
+
+origins:
+  master_mj_worker: mj-edge
+  project_worker: kevis-mj-edge
+  project_pages: kevis-web.pages.dev
+
+dns_records_desired_after_delegation:
+  - purpose: apex_authority_surface
+    name: '@'
+    target: mj_controlled_surface
+    proxied: true
+  - purpose: www_authority_surface
+    name: www
+    target: mj_controlled_surface
+    proxied: true
+
+worker_routes_desired:
+  - pattern: kevis.online/api/*
+    worker: kevis-mj-edge
+    status: installed
+  - pattern: kevis.online/mcp/*
+    worker: mj-edge
+    status: pending_dns_stable
+  - pattern: kevis.online/turn/*
+    worker: mj-edge
+    status: pending_dns_stable
+  - pattern: kevis.online/audit/*
+    worker: mj-edge
+    status: pending_dns_stable
+
+storage:
+  r2_bucket: kevis-media
+  kv_namespace: mj-edge-shared
+  mode: mixed_public_and_private
+  private_access: signed_urls_required
+
+security:
+  ssl_mode: full_strict
+  always_https: true
+  hsts: planned_after_stable_cutover
+  protected_paths:
+    - /mcp/*
+    - /turn/*
+    - /audit/*
+  deny_by_default: true
+
+notes:
+  - Kevis app is staged on Pages but should not become the apex authority surface until the app is ready to sell.
+  - Keep protected operations governed by the master MJ Layer under ellis-aegis.us authority.

@@ -1,0 +1,17 @@
+actor: codex
+reset_schedule: daily
+limits:
+  dns_create:
+    max_per_period: 2
+  waf_modify:
+    max_per_period: 5
+  ratelimit_modify:
+    max_per_period: 3
+  cache_modify:
+    max_per_period: 3
+  worker_route_modify:
+    max_per_period: 1
+  destructive_changes:
+    max_per_period: 0
+  general_modify:
+    max_per_period: 10

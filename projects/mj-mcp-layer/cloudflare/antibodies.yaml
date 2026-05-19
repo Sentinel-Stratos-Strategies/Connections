@@ -1,0 +1,53 @@
+# Drift Immune System — Antibody Memory
+# Auto-generated and updated by the drift classifier.
+# Each antibody represents a learned response to a specific drift pattern.
+# Manual entries are welcome — they take priority over auto-generated ones.
+
+antibodies:
+  - id: ab-manual-waf-disable
+    trigger: removed_waf
+    pattern:
+      resource_type: waf
+      change_type: removed
+    action: revert
+    requires_approval: true
+    evidence_required: true
+    created_from: "Manual rule: WAF removal always requires revert + approval"
+    created_at: "2026-05-10T00:00:00Z"
+    hit_count: 0
+
+  - id: ab-manual-ratelimit-remove
+    trigger: removed_ratelimit
+    pattern:
+      resource_type: ratelimit
+      change_type: removed
+    action: revert
+    requires_approval: true
+    evidence_required: true
+    created_from: "Manual rule: rate limit removal weakens blast radius protection"
+    created_at: "2026-05-10T00:00:00Z"
+    hit_count: 0
+
+  - id: ab-manual-ssl-downgrade
+    trigger: modified_ssl
+    pattern:
+      resource_type: ssl
+      change_type: modified
+    action: alert
+    requires_approval: false
+    evidence_required: true
+    created_from: "Manual rule: SSL changes may indicate downgrade attack"
+    created_at: "2026-05-10T00:00:00Z"
+    hit_count: 0
+
+  - id: ab-manual-dns-add
+    trigger: added_dns
+    pattern:
+      resource_type: dns
+      change_type: added
+    action: alert
+    requires_approval: false
+    evidence_required: true
+    created_from: "Manual rule: new DNS records need verification against ledger"
+    created_at: "2026-05-10T00:00:00Z"
+    hit_count: 0

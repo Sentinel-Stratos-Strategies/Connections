@@ -1,0 +1,34 @@
+{
+  "lane": "mj-figma",
+  "platform": "figma",
+  "purpose": "Coordinate approved design-system, Code Connect, and design implementation work for MJ dashboards and customer-facing portal surfaces.",
+  "owner": "Sentinel",
+  "authMode": "mcp_connector",
+  "memoryMode": "doc_projection",
+  "allowedActions": [
+    "design.read",
+    "component.inspect",
+    "design_system.rules_generate",
+    "code_connect.prepare",
+    "implementation.map"
+  ],
+  "deniedActions": [
+    "file.delete",
+    "permission.escalate",
+    "secret.read",
+    "workspace.export_all"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "design.write",
+    "library.publish",
+    "component.bulk_update"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_figma_files_only",
+    "externalWrite": "design_updates_require_approval",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}

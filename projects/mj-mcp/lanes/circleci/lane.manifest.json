@@ -1,0 +1,35 @@
+{
+  "lane": "mj-circleci",
+  "platform": "circleci",
+  "purpose": "Observe and repair approved CircleCI pipelines while keeping GitHub Actions as the MJ v1 deployment authority.",
+  "owner": "Sentinel",
+  "authMode": "api_key",
+  "memoryMode": "deployment_projection",
+  "allowedActions": [
+    "pipeline.read",
+    "workflow.read",
+    "job.logs_read",
+    "config.validate",
+    "chunk.plan"
+  ],
+  "deniedActions": [
+    "project.delete",
+    "context.secret_read",
+    "org.permission.escalate",
+    "secret.read"
+  ],
+  "requiresAudit": true,
+  "requiresApprovalFor": [
+    "workflow.rerun",
+    "config.write",
+    "context.update",
+    "deploy.trigger"
+  ],
+  "dataBoundaries": {
+    "externalRead": "approved_projects_only",
+    "externalWrite": "ci_config_changes_require_pr",
+    "truthWrite": "denied",
+    "secretHandling": "never_return_secret_values",
+    "logPayloads": false
+  }
+}
