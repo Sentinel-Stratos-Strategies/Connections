@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  /* MJ Brady Dark Theme - Enterprise Ops Aesthetic */
+  --color-background: #0A0A0F;
+  --color-surface: #13131A;
+  --color-surface-hover: #1A1A24;
+  --color-border: #1E1E2E;
+  --color-border-subtle: #14141E;
+  
+  --color-primary: #6C63FF;
+  --color-primary-hover: #7B73FF;
+  --color-primary-muted: #6C63FF33;
+  
+  --color-accent: #00D4FF;
+  --color-accent-hover: #1DE0FF;
+  --color-accent-muted: #00D4FF33;
+  
+  --color-success: #00FF94;
+  --color-success-muted: #00FF9433;
+  
+  --color-warning: #FFB800;
+  --color-warning-muted: #FFB80033;
+  
+  --color-danger: #FF4757;
+  --color-danger-muted: #FF475733;
+  
+  --color-foreground: #E8E8F0;
+  --color-muted: #6B6B8A;
+  --color-muted-foreground: #8B8BA4;
+  
+  --color-terminal-bg: #050508;
+  --color-terminal-text: #00FF94;
+  
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+/* Focus ring styles */
+.focus-ring {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+}
