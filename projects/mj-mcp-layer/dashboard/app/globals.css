@@ -76,3 +76,44 @@ body {
 .focus-ring {
   @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
 }
+
+/* Landing page animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(108, 99, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(108, 99, 255, 0.5), 0 0 60px rgba(0, 212, 255, 0.2);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.grid-pattern {
+  background-image: 
+    linear-gradient(rgba(108, 99, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 99, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
