@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -13,6 +13,7 @@ interface CloudShellProps {
 }
 
 const SHELL_URL = process.env.NEXT_PUBLIC_SHELL_URL || "wss://mcp.ellis-aegis.us/shell";
+const SHELL_AUTH_MODE = process.env.NEXT_PUBLIC_SHELL_AUTH_MODE || "message";
 
 export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
   const { token } = useAuth();
@@ -21,24 +22,37 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialCommandSentRef = useRef(false);
+  const isCleaningUpRef = useRef(false);
 
   const connect = useCallback(() => {
     if (!token || !xtermRef.current) return;
 
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
     setConnectionStatus("connecting");
 
-    const ws = new WebSocket(`${SHELL_URL}?token=${encodeURIComponent(token)}`);
+    const useQueryToken = SHELL_AUTH_MODE.toLowerCase() === "query";
+    const shellUrl = useQueryToken
+      ? `${SHELL_URL}?token=${encodeURIComponent(token)}`
+      : SHELL_URL;
+    const ws = new WebSocket(shellUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (!useQueryToken) {
+        ws.send(JSON.stringify({ type: "auth", token }));
+      }
+
       setConnectionStatus("connected");
       xtermRef.current?.writeln("\r\n\x1b[32mConnected to MCP Cloud Shell\x1b[0m\r\n");
       xtermRef.current?.write("$ ");
       onReady?.();
 
-      // Send initial command if provided and not already sent
       if (initialCommand && !initialCommandSentRef.current) {
         initialCommandSentRef.current = true;
         setTimeout(() => {
@@ -57,7 +71,6 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
           xtermRef.current?.write(message.data);
         }
       } catch {
-        // Raw text fallback
         xtermRef.current?.write(event.data);
       }
     };
@@ -67,10 +80,11 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
     };
 
     ws.onclose = () => {
+      if (isCleaningUpRef.current) return;
+
       setConnectionStatus("disconnected");
       xtermRef.current?.writeln("\r\n\x1b[33mDisconnected from shell\x1b[0m");
-      
-      // Auto-reconnect after 3 seconds
+
       reconnectTimeoutRef.current = setTimeout(() => {
         xtermRef.current?.writeln("\x1b[36mReconnecting...\x1b[0m");
         connect();
@@ -81,7 +95,8 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
   useEffect(() => {
     if (!terminalRef.current || !token) return;
 
-    // Initialize xterm.js
+    isCleaningUpRef.current = false;
+
     const xterm = new XTerm({
       theme: {
         background: "#050508",
@@ -127,38 +142,31 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
 
-    // Handle input
     let inputBuffer = "";
     xterm.onData((data) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
         return;
       }
 
-      // Handle special keys
       if (data === "\r") {
-        // Enter key
         xterm.write("\r\n");
         wsRef.current.send(JSON.stringify({ type: "input", data: inputBuffer + "\n" }));
         inputBuffer = "";
       } else if (data === "\x7f") {
-        // Backspace
         if (inputBuffer.length > 0) {
           inputBuffer = inputBuffer.slice(0, -1);
           xterm.write("\b \b");
         }
       } else if (data === "\x03") {
-        // Ctrl+C
         wsRef.current.send(JSON.stringify({ type: "signal", signal: "SIGINT" }));
         xterm.write("^C\r\n$ ");
         inputBuffer = "";
       } else if (data >= " " || data === "\t") {
-        // Printable characters and tab
         inputBuffer += data;
         xterm.write(data);
       }
     });
 
-    // Welcome message
     xterm.writeln("\x1b[36m╔══════════════════════════════════════════════════════════╗\x1b[0m");
     xterm.writeln("\x1b[36m║\x1b[0m  \x1b[1;32mMJ Brady Cloud Shell\x1b[0m                                    \x1b[36m║\x1b[0m");
     xterm.writeln("\x1b[36m║\x1b[0m  MCP Operations Command Center                            \x1b[36m║\x1b[0m");
@@ -173,10 +181,8 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
     xterm.writeln("");
     xterm.writeln("\x1b[36mConnecting to shell...\x1b[0m");
 
-    // Connect to WebSocket
     connect();
 
-    // Handle window resize
     const handleResize = () => {
       fitAddon.fit();
       if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -193,14 +199,17 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
     window.addEventListener("resize", handleResize);
 
     return () => {
+      isCleaningUpRef.current = true;
       window.removeEventListener("resize", handleResize);
-      clearTimeout(reconnectTimeoutRef.current);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
       wsRef.current?.close();
       xterm.dispose();
     };
   }, [token, connect]);
 
-  // Handle initialCommand changes
   useEffect(() => {
     if (
       initialCommand &&
