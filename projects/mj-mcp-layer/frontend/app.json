@@ -15,14 +15,26 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "us.ellis-aegis.mjbrady"
+      "bundleIdentifier": "us.ellis.mjbrady",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "MJ Brady uses the camera to scan QR codes for quick configuration.",
+        "NSFaceIDUsageDescription": "MJ Brady uses Face ID to secure your operator credentials.",
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0A0F"
       },
-      "package": "us.ellisaegis.mjbrady"
+      "package": "us.ellis.mjbrady",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -36,12 +48,47 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#6C63FF"
+          "color": "#6C63FF",
+          "sounds": ["./assets/sounds/drift-alert.wav"]
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24,
+            "buildToolsVersion": "34.0.0",
+            "enableProguardInReleaseBuilds": true
+          },
+          "ios": {
+            "deploymentTarget": "15.0",
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "expo-system-ui",
+        {
+          "backgroundColor": "#0A0A0F"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    },
+    "owner": "ellis-aegis",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/REPLACE_WITH_EAS_PROJECT_ID"
     }
   }
 }
