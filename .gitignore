@@ -27,6 +27,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!projects/mj-mcp-layer/frontend/lib/
+!projects/mj-mcp-layer/frontend/lib/**
 lib64/
 parts/
 sdist/

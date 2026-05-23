@@ -20,7 +20,9 @@
       "infoPlist": {
         "NSCameraUsageDescription": "MJ Brady uses the camera to scan QR codes for quick configuration.",
         "NSFaceIDUsageDescription": "MJ Brady uses Face ID to secure your operator credentials.",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -33,8 +35,7 @@
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
-      ],
-      "googleServicesFile": "./google-services.json"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -49,7 +50,9 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#6C63FF",
-          "sounds": ["./assets/sounds/drift-alert.wav"]
+          "sounds": [
+            "./assets/sounds/drift-alert.wav"
+          ]
         }
       ],
       [
@@ -63,7 +66,7 @@
             "enableProguardInReleaseBuilds": true
           },
           "ios": {
-            "deploymentTarget": "15.0",
+            "deploymentTarget": "15.1",
             "useFrameworks": "static"
           }
         }

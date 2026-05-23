@@ -27,8 +27,6 @@ jobs:
             zone_id_secret: CF_ZONE_ID_KEVIS
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: cursor/mj-layer-enterprise-ready-1c9b
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -84,6 +82,8 @@ jobs:
         run: |
           ALERT_FILE=$(ls projects/mj-mcp-layer/artifacts/ALERT-*.md 2>/dev/null | head -1)
           if [ -f "$ALERT_FILE" ]; then
+            gh label create drift --color fbca04 --description "Cloudflare drift or invalid scan alert" || true
+            gh label create critical --color b60205 --description "Critical operator attention required" || true
             gh issue create \
               --title "Drift detected in ${{ matrix.zone_name }} zone" \
               --body "$(cat "$ALERT_FILE")" \
