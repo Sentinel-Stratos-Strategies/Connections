@@ -1,0 +1,53 @@
+{
+  "captured_at": "2026-05-23T18:33:09Z",
+  "worker": "mj-edge",
+  "reason": "Disabled Cloudflare native Workers Builds because stale organization-owned build token caused failing GitHub checks; GitHub Actions remains source-of-truth deploy lane.",
+  "triggers": [
+    {
+      "trigger_uuid": "52b2a8e6-1f61-4990-9c4e-e86609bb9b2d",
+      "trigger_name": "Deploy non-production branches",
+      "build_command": "npm ci --ignore-scripts --no-audit --no-fund && npm ci --prefix ../frontend --ignore-scripts --no-audit --no-fund && npm --prefix ../frontend run build && npm run typecheck && npx wrangler deploy --dry-run",
+      "deploy_command": "npx wrangler versions upload",
+      "root_directory": "projects/mj-mcp-layer/mcp-layer",
+      "branch_includes": [
+        "*"
+      ],
+      "branch_excludes": [
+        "cursor/mj-layer-enterprise-ready-1c9b"
+      ],
+      "path_includes": [
+        "*"
+      ],
+      "path_excludes": [],
+      "build_token_uuid": "55759aa6-b770-4ce4-a5fd-a729568774ce",
+      "build_token_name": "Workers Builds - 2026-05-13 18:39",
+      "repo": {
+        "provider_type": "github",
+        "provider_account_name": "Sentinel-Stratos-Strategies",
+        "repo_name": "Connections"
+      }
+    },
+    {
+      "trigger_uuid": "4f34997a-d107-4029-8cf1-eb4544ea5b94",
+      "trigger_name": "Deploy default branch",
+      "build_command": "npm ci --ignore-scripts --no-audit --no-fund && npm ci --prefix ../frontend --ignore-scripts --no-audit --no-fund && npm --prefix ../frontend run build && npm run typecheck && npx wrangler deploy --dry-run",
+      "deploy_command": "npx wrangler deploy",
+      "root_directory": "projects/mj-mcp-layer/mcp-layer",
+      "branch_includes": [
+        "cursor/mj-layer-enterprise-ready-1c9b"
+      ],
+      "branch_excludes": [],
+      "path_includes": [
+        "*"
+      ],
+      "path_excludes": [],
+      "build_token_uuid": "55759aa6-b770-4ce4-a5fd-a729568774ce",
+      "build_token_name": "Workers Builds - 2026-05-13 18:39",
+      "repo": {
+        "provider_type": "github",
+        "provider_account_name": "Sentinel-Stratos-Strategies",
+        "repo_name": "Connections"
+      }
+    }
+  ]
+}
