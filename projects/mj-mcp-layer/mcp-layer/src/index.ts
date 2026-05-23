@@ -1,4 +1,9 @@
 import { CONSOLE_LANE_AUTHORITY, CONSOLE_LANES, SKIPPED_CONSOLE_LANES } from "./console-lanes";
+import * as memory from "./memory-contract";
+import * as voice from "./voice-contract";
+import { syncGenesisMemory } from "./genesis-sync";
+import * as notifications from "./notifications";
+import * as drift from "./drift-alerts";
 
 interface WatcherJob {
   actor: string;
@@ -64,6 +69,12 @@ export const POLICY: PolicyConfig = {
     "/api/console/lanes",
     "/api/ledger",
     "/api/genesis/mcp",
+    "/api/memory",
+    "/api/memory/*",
+    "/api/voice",
+    "/api/voice/*",
+    "/api/notifications/subscribe",
+    "/api/notifications/drift-alert",
   ],
   required_headers: ["x-tenant-id", "x-request-id", "x-policy-version", "x-operator-capability"],
   method_matrix: {
@@ -78,6 +89,12 @@ export const POLICY: PolicyConfig = {
     "/api/console/lanes": ["GET", "OPTIONS"],
     "/api/ledger": ["GET", "OPTIONS"],
     "/api/genesis/mcp": ["POST", "OPTIONS"],
+    "/api/memory": ["GET", "POST", "OPTIONS"],
+    "/api/memory/*": ["GET", "DELETE", "OPTIONS"],
+    "/api/voice": ["GET", "POST", "OPTIONS"],
+    "/api/voice/*": ["GET", "DELETE", "OPTIONS"],
+    "/api/notifications/subscribe": ["POST", "OPTIONS"],
+    "/api/notifications/drift-alert": ["POST", "OPTIONS"],
   },
   capability_matrix: {
     "/mcp": {
@@ -113,6 +130,28 @@ export const POLICY: PolicyConfig = {
       GET: ["forensic.read", "mcp.admin"],
     },
     "/api/genesis/mcp": {
+      POST: ["mcp.admin", "cloud.ops"],
+    },
+    "/api/memory": {
+      GET: ["mcp.admin", "forensic.read"],
+      POST: ["mcp.admin", "cloud.ops"],
+    },
+    "/api/memory/*": {
+      GET: ["mcp.admin", "forensic.read"],
+      DELETE: ["mcp.admin", "cloud.ops"],
+    },
+    "/api/voice": {
+      GET: ["mcp.admin", "forensic.read"],
+      POST: ["mcp.admin", "cloud.ops"],
+    },
+    "/api/voice/*": {
+      GET: ["mcp.admin", "forensic.read"],
+      DELETE: ["mcp.admin", "cloud.ops"],
+    },
+    "/api/notifications/subscribe": {
+      POST: ["mcp.admin", "cloud.ops"],
+    },
+    "/api/notifications/drift-alert": {
       POST: ["mcp.admin", "cloud.ops"],
     },
   },
@@ -222,6 +261,52 @@ export default {
       return handleGenesisMcpProxy(request, env, ctx);
     }
 
+    // ---------- Memory Contract ----------
+
+    if (path === "/api/memory" && request.method === "GET") {
+      return memory.handleMemoryList(request, env);
+    }
+    if (path === "/api/memory" && request.method === "POST") {
+      return memory.handleMemoryUpsert(request, env);
+    }
+    if (path === "/api/memory" && request.method === "DELETE") {
+      return memory.handleMemoryPurge(request, env);
+    }
+    if (path.startsWith("/api/memory/") && request.method === "GET") {
+      const id = path.split("/").pop() || "";
+      return memory.handleMemoryShow(request, env, id);
+    }
+    if (path.startsWith("/api/memory/") && request.method === "DELETE") {
+      const id = path.split("/").pop() || "";
+      return memory.handleMemoryDelete(request, env, id);
+    }
+
+    // ---------- Voice Contract ----------
+
+    if (path === "/api/voice" && request.method === "GET") {
+      return voice.handleVoiceList(request, env);
+    }
+    if (path === "/api/voice" && request.method === "POST") {
+      return voice.handleVoiceUpsert(request, env);
+    }
+    if (path.startsWith("/api/voice/") && request.method === "GET") {
+      const id = path.split("/").pop() || "";
+      return voice.handleVoiceShow(request, env, id);
+    }
+    if (path.startsWith("/api/voice/") && request.method === "DELETE") {
+      const id = path.split("/").pop() || "";
+      return voice.handleVoiceDelete(request, env, id);
+    }
+
+    // ---------- Notifications & Drift Alerts ----------
+
+    if (path === "/api/notifications/subscribe" && request.method === "POST") {
+      return notifications.handleSubscribe(request, env);
+    }
+    if (path === "/api/notifications/drift-alert" && request.method === "POST") {
+      return drift.handleDriftWebhook(request, env);
+    }
+
     return json({ error: "not_found" }, { env, request, status: 404 });
   },
 
@@ -234,6 +319,8 @@ export default {
     }));
 
     ctx.waitUntil(dispatchJobs(env, jobs));
+    ctx.waitUntil(syncGenesisMemory(env, ctx));
+    ctx.waitUntil(drift.runDriftScanner(env));
     ctx.waitUntil(
       logEvent(env, {
         actor: "scheduler",

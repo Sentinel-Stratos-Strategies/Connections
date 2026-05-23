@@ -4,8 +4,10 @@
   "private": true,
   "description": "MJ MCP Edge Layer — Multi-tenant policy enforcement, MCP routing, and control plane Worker.",
   "scripts": {
+    "build": "tsc --noEmit",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "lint": "tsc --noEmit",
     "manifest:deployment": "node scripts/write-deployment-manifest.mjs",
     "smoke": "node scripts/smoke-control-plane.mjs",
     "smoke:enterprise-lanes": "node scripts/smoke-enterprise-lanes.mjs",

@@ -1,0 +1,11 @@
+services:
+  brady-shell:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - OPERATOR_TOKEN_HASH=${OPERATOR_TOKEN_HASH}
+      - MCP_BASE_URL=${MCP_BASE_URL:-https://mcp.ellis-aegis.us}
+      - LOG_LEVEL=debug
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+    restart: unless-stopped
