@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { clearToken, setToken as persistToken } from "@/constants/storage";
-import { STORAGE_KEYS } from "@/constants/config";
-import * as SecureStore from "expo-secure-store";
+import { clearToken, getToken, setToken as persistToken } from "@/constants/storage";
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -17,7 +15,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    SecureStore.getItemAsync(STORAGE_KEYS.TOKEN)
+    getToken()
       .then((token) => setIsAuthenticated(Boolean(token)))
       .finally(() => setIsLoading(false));
   }, []);

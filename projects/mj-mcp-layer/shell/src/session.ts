@@ -96,6 +96,10 @@ export class Session {
     this.ptyProcess.resize(cols, rows);
   }
 
+  handleSignal(signal: 'SIGINT' | 'SIGTERM' | 'SIGKILL') {
+    this.ptyProcess.kill(signal);
+  }
+
   private execute(command: string) {
     const { text, redacted } = redactSecrets(command);
     

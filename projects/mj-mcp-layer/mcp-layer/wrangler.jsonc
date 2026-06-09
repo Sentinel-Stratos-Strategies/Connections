@@ -6,7 +6,7 @@
   "preview_urls": false,
   "workers_dev": true,
   "assets": {
-    "directory": "../frontend/dist",
+    "directory": "../dashboard/out",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": [
@@ -29,51 +29,50 @@
     "APP_ENV": "production",
     "ZONE_NAME": "ellis-aegis.us",
     "PUBLIC_BASE_URL": "https://mcp.ellis-aegis.us",
-    "ALLOWED_ORIGINS": "https://mj.ellis-aegis.us,https://mcp.ellis-aegis.us,https://codex.ellis-aegis.us",
+    "ALLOWED_ORIGINS": "https://mj.ellis-aegis.us,https://mcp.ellis-aegis.us,https://codex.ellis-aegis.us,http://localhost:3000,http://127.0.0.1:3000",
     "OPERATOR_HEADER": "x-ellis-aegis-token",
-    "EXPO_ACCESS_TOKEN": "TBD",
     "EXPO_PROJECT_ID": "TBD"
   },
   // Durable Object migrations — required to retire classes removed from previous deployments.
   "migrations": [
     {
       "tag": "v2",
-      "deleted_classes": ["SessionObject"],
-    },
+      "deleted_classes": ["SessionObject"]
+    }
   ],
 
   "triggers": {
-    "crons": ["0 */2 * * *", "15 6 * * *"],
+    "crons": ["0 */2 * * *", "15 6 * * *"]
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "ellis-aegis-control-plane",
-      "database_id": "5fe110fa-5bc8-4925-a5d5-2ca08c5bee5b",
-    },
+      "database_id": "5fe110fa-5bc8-4925-a5d5-2ca08c5bee5b"
+    }
   ],
   "kv_namespaces": [
     {
       "binding": "FLAGS",
-      "id": "5a7fbf6b63bf4b02bb14ab7cd3d2f521",
-    },
+      "id": "5a7fbf6b63bf4b02bb14ab7cd3d2f521"
+    }
   ],
   "r2_buckets": [
     {
       "binding": "EVIDENCE_BUCKET",
-      "bucket_name": "ellis-aegis-evidence",
-    },
+      "bucket_name": "ellis-aegis-evidence"
+    }
   ],
   "queues": {
     "producers": [
       {
         "binding": "WATCHER_QUEUE",
-        "queue": "ellis-aegis-watchers",
-      },
-    ],
+        "queue": "ellis-aegis-watchers"
+      }
+    ]
     // The shared watcher queue is currently consumed by the Cloudflare platform
     // Worker `ellis-aegis-control-plane`; this lane only produces jobs.
-  },
+  }
 
   // Uncomment after Email Routing is enabled and your destination address is verified.
   // "send_email": [

@@ -24,6 +24,8 @@ interface Env {
   OPERATOR_TOKEN?: string;
   AEGIS_TOKEN?: string;
   GENESIS_TUNNEL_URL?: string;
+  OPENAI_API_KEY?: string;
+  BRADY_MODEL?: string;
   DB?: D1Database;
   FLAGS?: KVNamespace;
   EVIDENCE_BUCKET?: R2Bucket;
@@ -53,7 +55,7 @@ const WATCHER_KINDS: WatcherKind[] = ["edge-abuse", "drift", "origin-health", "d
 
 /** Mirrors `<meta http-equiv="Content-Security-Policy">` on dashboard HTML (CP-3). */
 const DASHBOARD_CSP =
-  "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+  "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://mcp.ellis-aegis.us https://mj.ellis-aegis.us wss://mcp.ellis-aegis.us wss://mj.ellis-aegis.us; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
 
 export const POLICY: PolicyConfig = {
   deny_by_default: true,
@@ -67,6 +69,7 @@ export const POLICY: PolicyConfig = {
     "/api/checks/run",
     "/api/change-request",
     "/api/console/lanes",
+    "/api/mj-brady",
     "/api/ledger",
     "/api/genesis/mcp",
     "/api/memory",
@@ -87,6 +90,7 @@ export const POLICY: PolicyConfig = {
     "/api/checks/run": ["POST", "OPTIONS"],
     "/api/change-request": ["GET", "POST", "OPTIONS"],
     "/api/console/lanes": ["GET", "OPTIONS"],
+    "/api/mj-brady": ["POST", "OPTIONS"],
     "/api/ledger": ["GET", "OPTIONS"],
     "/api/genesis/mcp": ["POST", "OPTIONS"],
     "/api/memory": ["GET", "POST", "OPTIONS"],
@@ -125,6 +129,9 @@ export const POLICY: PolicyConfig = {
     },
     "/api/console/lanes": {
       GET: ["forensic.read", "mcp.admin", "cloud.ops", "security.status"],
+    },
+    "/api/mj-brady": {
+      POST: ["mcp.admin", "cloud.ops", "security.status"],
     },
     "/api/ledger": {
       GET: ["forensic.read", "mcp.admin"],
@@ -252,6 +259,10 @@ export default {
 
     if (path === "/api/console/lanes" && request.method === "GET") {
       return handleConsoleLanes(request, env, ctx);
+    }
+
+    if (path === "/api/mj-brady" && request.method === "POST") {
+      return handleMjBrady(request, env, ctx);
     }
 
     if (path === "/api/ledger" && request.method === "GET") {
@@ -631,6 +642,172 @@ async function handleConsoleLanes(request: Request, env: Env, ctx: ExecutionCont
   }, { env, request });
 }
 
+// ---------- Brady AI Handler ----------
+
+async function handleMjBrady(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (!auth.ok) return json({ error: auth.error }, { env, request, status: 401 });
+
+  const body = await readRequestJson(request);
+  const tenantId =
+    readString(body.tenantId)?.slice(0, 96) ||
+    request.headers.get("x-tenant-id")?.slice(0, 96) ||
+    "operator";
+  const message = readString(body.message)?.trim() ?? "";
+  const context = Array.isArray(body.context)
+    ? body.context
+      .filter((entry): entry is string => typeof entry === "string")
+      .slice(-12)
+      .map((entry) => entry.slice(0, 2000))
+    : [];
+
+  if (!message) {
+    return json({ error: "message is required" }, { env, request, status: 400 });
+  }
+  if (message.length > 8000) {
+    return json({ error: "message exceeds 8000 characters" }, { env, request, status: 413 });
+  }
+
+  const memoryContext = await fetchBradyMemoryContext(tenantId, env);
+  const systemPrompt = buildBradySystemPrompt(memoryContext, context);
+  const reply = await routeToBradyLlm(systemPrompt, message, env);
+  const command = extractCommandIntent(reply);
+  const auditId = crypto.randomUUID();
+
+  ctx.waitUntil(logEvent(env, {
+    actor: auth.actor,
+    category: "brady.chat",
+    message: `MJ Brady chat tenant=${tenantId}`,
+    metadata: JSON.stringify(buildAuditMetadata(request, {
+      auditId,
+      command: command ?? null,
+      contextCount: context.length,
+      hasMemory: Object.keys(memoryContext).length > 0,
+      tenantId,
+    })),
+    severity: "info",
+    source: "api",
+  }));
+
+  return json({
+    auditId,
+    blocked: false,
+    command: command ?? undefined,
+    reply,
+  }, { env, request });
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+async function fetchBradyMemoryContext(tenantId: string, env: Env): Promise<Record<string, string>> {
+  if (!env.DB) return {};
+  try {
+    return await memory.fetchMemoryContext(tenantId, env) as Record<string, string>;
+  } catch (error) {
+    console.error("brady-memory-context-error", error);
+    return {};
+  }
+}
+
+function buildBradySystemPrompt(memoryContext: Record<string, string>, context: string[]): string {
+  const memoryLines = Object.entries(memoryContext)
+    .slice(0, 20)
+    .map(([key, value]) => `- ${key}: ${value.slice(0, 500)}`)
+    .join("\n");
+  const contextLines = context.length > 0 ? context.join("\n") : "No recent dashboard context.";
+
+  return [
+    "You are MJ Brady, the Ellis-Aegis operator quarterback.",
+    "You help Joe route cloud, shell, forensics, Genesis Method, and deployment work safely.",
+    "Be direct, practical, and approval-aware. Do not claim a command ran unless the shell or ledger confirms it.",
+    "If the operator asks for a risky mutation, recommend the safest next command and call out the approval gate.",
+    "",
+    "Recent dashboard context:",
+    contextLines,
+    "",
+    "Memory context:",
+    memoryLines || "No memory entries available.",
+  ].join("\n");
+}
+
+async function routeToBradyLlm(systemPrompt: string, message: string, env: Env): Promise<string> {
+  const apiKey = env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return [
+      "Brady lane is online at the MCP edge, but the LLM provider secret is not configured yet.",
+      "Local shell can still run, and I can validate policy/route health once OPENAI_API_KEY is set on the Worker.",
+      "",
+      `Operator ask: ${message}`,
+    ].join("\n");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25_000);
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        input: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message },
+        ],
+        max_output_tokens: 700,
+        model: env.BRADY_MODEL || "gpt-4.1-mini",
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      return `Brady reached the LLM provider, but it returned ${response.status}. ${detail.slice(0, 300)}`;
+    }
+
+    const payload = await response.json() as JsonRecord;
+    return extractResponseText(payload) || "Brady reached the LLM provider, but no text response came back.";
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "unknown_error";
+    return `Brady route is live, but the LLM request failed: ${detail}`;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function extractResponseText(payload: JsonRecord): string {
+  if (typeof payload.output_text === "string") return payload.output_text;
+
+  const output = Array.isArray(payload.output) ? payload.output : [];
+  const chunks: string[] = [];
+  for (const item of output) {
+    if (!isJsonRecord(item)) continue;
+    const content = Array.isArray(item.content) ? item.content : [];
+    for (const contentItem of content) {
+      if (!isJsonRecord(contentItem)) continue;
+      const text = contentItem.text;
+      if (typeof text === "string") chunks.push(text);
+    }
+  }
+  return chunks.join("\n").trim();
+}
+
+function extractCommandIntent(reply: string): string | undefined {
+  const commandLabel = reply.match(/(?:^|\n)\s*(?:command|next command)\s*:\s*`?([^\n`]+)`?/i);
+  if (commandLabel?.[1]) return commandLabel[1].trim();
+
+  const fencedBlock = reply.match(/```(?:bash|sh|zsh|shell)?\n([\s\S]*?)```/i);
+  const command = fencedBlock?.[1]
+    ?.split("\n")
+    .map((line) => line.trim())
+    .find((line) => line && !line.startsWith("#"));
+
+  return command;
+}
+
 // ---------- Change Request Handlers ----------
 
 async function handleChangeRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -800,6 +977,10 @@ async function serveDashboard(request: Request, env: Env): Promise<Response> {
   let pathname = url.pathname;
   if (pathname === "/dashboard" || pathname === "/dashboard/") {
     pathname = "/dashboard/index.html";
+  } else if (!pathname.includes(".") && !pathname.endsWith("/")) {
+    pathname = `${pathname}/index.html`;
+  } else if (!pathname.includes(".") && pathname.endsWith("/")) {
+    pathname = `${pathname}index.html`;
   }
 
   const assetUrl = new URL(pathname + url.search, url.origin);
@@ -882,6 +1063,7 @@ function resolvePolicyBasePath(path: string): string | null {
   if (path === "/api/checks/run") return "/api/checks/run";
   if (path === "/api/change-request") return "/api/change-request";
   if (path === "/api/console/lanes") return "/api/console/lanes";
+  if (path === "/api/mj-brady") return "/api/mj-brady";
   if (path === "/api/ledger") return "/api/ledger";
   return null;
 }
