@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { LoginForm } from "@/components/login-form";
 import { DashboardLayout, useDashboardLayout } from "@/components/dashboard-layout";
-import { CloudShell } from "@/components/cloud-shell";
 import { Button } from "@/components/ui/button";
+import { BradyChat } from "@/components/brady-chat";
 import { Plus, X, Terminal } from "lucide-react";
+
+const CloudShell = dynamic(
+  () => import("@/components/cloud-shell").then((mod) => mod.CloudShell),
+  { ssr: false }
+);
 
 interface ShellTab {
   id: string;
@@ -56,7 +62,7 @@ function ConsoleShellTabs() {
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
+    <div className="flex h-[calc(100vh-8rem)] flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -69,56 +75,62 @@ function ConsoleShellTabs() {
         </div>
       </div>
 
-      <div className="flex items-center gap-1 mb-2 border-b border-border pb-2">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={`group flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? "bg-terminal-bg text-terminal-text border border-border border-b-terminal-bg -mb-[3px]"
-                : "text-muted hover:text-foreground hover:bg-surface-hover"
-            }`}
-          >
-            <button
-              onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-2"
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              {tab.label}
-            </button>
-            {tabs.length > 1 && (
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  removeTab(tab.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-danger/20 hover:text-danger transition-all"
-                aria-label={`Close ${tab.label}`}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.65fr)]">
+        <div className="flex min-h-[34rem] flex-col">
+          <div className="flex items-center gap-1 mb-2 border-b border-border pb-2">
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className={`group flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-terminal-bg text-terminal-text border border-border border-b-terminal-bg -mb-[3px]"
+                    : "text-muted hover:text-foreground hover:bg-surface-hover"
+                }`}
               >
-                <X className="w-3 h-3" />
-              </button>
-            )}
+                <button
+                  onClick={() => setActiveTab(tab.id)}
+                  className="flex items-center gap-2"
+                >
+                  <Terminal className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+                {tabs.length > 1 && (
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removeTab(tab.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-danger/20 hover:text-danger transition-all"
+                    aria-label={`Close ${tab.label}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={addTab}
+              className="ml-2 text-muted hover:text-foreground"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
           </div>
-        ))}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={addTab}
-          className="ml-2 text-muted hover:text-foreground"
-        >
-          <Plus className="w-4 h-4" />
-        </Button>
-      </div>
 
-      <div className="flex-1 rounded-lg border border-border overflow-hidden bg-terminal-bg">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={`h-full ${activeTab === tab.id ? "block" : "hidden"}`}
-          >
-            <CloudShell initialCommand={tab.initialCommand} />
+          <div className="min-h-0 flex-1 rounded-lg border border-border overflow-hidden bg-terminal-bg">
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className={`h-full ${activeTab === tab.id ? "block" : "hidden"}`}
+              >
+                <CloudShell initialCommand={tab.initialCommand} />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        <BradyChat />
       </div>
 
       <div className="mt-3 flex items-center justify-between text-xs text-muted">

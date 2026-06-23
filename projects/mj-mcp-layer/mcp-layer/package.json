@@ -5,8 +5,12 @@
   "description": "MJ MCP Edge Layer — Multi-tenant policy enforcement, MCP routing, and control plane Worker.",
   "scripts": {
     "build": "tsc --noEmit",
+    "build:dashboard": "NEXT_PUBLIC_MCP_BASE_URL=https://mcp.ellis-aegis.us npm --prefix ../dashboard run build",
+    "build:dashboard:local": "NEXT_PUBLIC_MCP_BASE_URL=http://localhost:8787 npm --prefix ../dashboard run build",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev:local": "npm run build:dashboard:local && wrangler dev --config wrangler.local.jsonc --port 8787",
+    "deploy": "npm run build:dashboard && wrangler deploy",
+    "deploy:dry-run": "npm run build:dashboard && wrangler deploy --dry-run",
     "lint": "tsc --noEmit",
     "manifest:deployment": "node scripts/write-deployment-manifest.mjs",
     "smoke": "node scripts/smoke-control-plane.mjs",

@@ -18,6 +18,10 @@ interface AuthContextValue {
 }
 
 const TOKEN_STORAGE_KEY = "mj-brady-operator-token";
+const DEV_OPERATOR_TOKEN =
+  process.env.NODE_ENV === "development"
+    ? process.env.NEXT_PUBLIC_DEV_OPERATOR_TOKEN?.trim()
+    : undefined;
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -26,7 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setToken(window.sessionStorage.getItem(TOKEN_STORAGE_KEY));
+    const storedToken = window.sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    const nextToken = storedToken || DEV_OPERATOR_TOKEN || null;
+    if (nextToken && !storedToken) {
+      window.sessionStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
+    }
+    setToken(nextToken);
     setHydrated(true);
   }, []);
 

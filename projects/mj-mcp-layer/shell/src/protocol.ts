@@ -15,6 +15,10 @@ export const InboundMessageSchema = z.discriminatedUnion('type', [
     rows: z.number(),
   }),
   z.object({
+    type: z.literal('signal'),
+    signal: z.enum(['SIGINT', 'SIGTERM', 'SIGKILL']),
+  }),
+  z.object({
     type: z.literal('confirm'),
     phrase: z.string(),
   }),

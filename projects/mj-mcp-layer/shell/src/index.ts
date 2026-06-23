@@ -116,6 +116,9 @@ wss.on('connection', (ws, request) => {
           case 'resize':
             session.handleResize(msg.cols, msg.rows);
             break;
+          case 'signal':
+            session.handleSignal(msg.signal);
+            break;
           case 'confirm':
             session.handleConfirm(msg.phrase);
             break;

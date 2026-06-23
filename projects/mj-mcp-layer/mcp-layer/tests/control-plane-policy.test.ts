@@ -194,6 +194,27 @@ describe("control-plane policy", () => {
     assert.match(content[0].text, /mj-build-web/);
   });
 
+  test("mj brady route is policy protected and returns fallback without LLM secret", async () => {
+    const blocked = await fetchWorker("/api/mj-brady", {
+      body: JSON.stringify({ message: "status" }),
+      headers: authHeaders(),
+      method: "POST",
+    });
+    assert.equal(blocked.status, 403);
+
+    const response = await fetchWorker("/api/mj-brady", {
+      body: JSON.stringify({ message: "status", tenantId: "operator", context: ["Shell: connected"] }),
+      headers: authHeaders(policyHeaders()),
+      method: "POST",
+    });
+
+    const body = await readJson(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.blocked, false);
+    assert.match(String(body.reply ?? ""), /Brady lane is online/);
+    assert.equal(typeof body.auditId, "string");
+  });
+
   test("health endpoints expose minimal public status payload", async () => {
     const healthzResponse = await fetchWorker("/healthz", { method: "GET" });
     const apiHealthResponse = await fetchWorker("/api/health", { method: "GET" });
@@ -233,5 +254,20 @@ describe("control-plane policy", () => {
     assert.equal(response.headers.get("content-type")?.includes("text/html"), true);
     assert.match(String(response.headers.get("content-security-policy") ?? ""), /default-src 'self'/);
     assert.match(await response.text(), /<title>ok<\/title>/);
+  });
+
+  test("dashboard nested routes resolve to exported static index files", async () => {
+    const assets: Fetcher = {
+      async fetch(req: Request) {
+        assert.equal(new URL(req.url).pathname, "/dashboard/console/index.html");
+        return new Response("<!doctype html><title>console</title>", {
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      },
+    };
+
+    const response = await fetchWorker("/dashboard/console", { method: "GET" }, createEnv({ ASSETS: assets }));
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /<title>console<\/title>/);
   });
 });

@@ -15,6 +15,35 @@ interface CloudShellProps {
 const SHELL_URL = process.env.NEXT_PUBLIC_SHELL_URL || "wss://mcp.ellis-aegis.us/shell";
 const SHELL_AUTH_MODE = process.env.NEXT_PUBLIC_SHELL_AUTH_MODE || "message";
 
+type ShellMessage =
+  | { type: "auth_ok"; user: { userId: string; tenantId: string; role: string } }
+  | { type: "auth_fail"; reason: string }
+  | { type: "output"; data: string }
+  | { type: "exit"; code: number }
+  | { type: "error"; message: string }
+  | { type: "policy_violation"; message: string }
+  | { type: "confirm_required"; command: string; phrase: string };
+
+function sendShellCommand(ws: WebSocket, command: string) {
+  ws.send(JSON.stringify({ type: "command", payload: command }));
+}
+
+function elementHasLayout(element: HTMLElement | null) {
+  if (!element) return false;
+  return element.clientWidth > 0 && element.clientHeight > 0;
+}
+
+function fitTerminal(fitAddon: FitAddon | null, terminal: XTerm | null, element: HTMLElement | null) {
+  if (!fitAddon || !terminal || !elementHasLayout(element)) return false;
+
+  try {
+    fitAddon.fit();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
   const { token } = useAuth();
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -25,6 +54,7 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialCommandSentRef = useRef(false);
   const isCleaningUpRef = useRef(false);
+  const pendingConfirmPhraseRef = useRef<string | null>(null);
 
   const connect = useCallback(() => {
     if (!token || !xtermRef.current) return;
@@ -58,7 +88,7 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
         setTimeout(() => {
           if (ws.readyState === WebSocket.OPEN) {
             xtermRef.current?.write(initialCommand);
-            ws.send(JSON.stringify({ type: "input", data: initialCommand + "\n" }));
+            sendShellCommand(ws, initialCommand);
           }
         }, 100);
       }
@@ -66,9 +96,31 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
 
     ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data);
-        if (message.type === "output") {
+        const message = JSON.parse(event.data) as ShellMessage;
+        if (message.type === "auth_ok") {
+          xtermRef.current?.writeln(
+            `\r\n\x1b[32mAuthenticated as ${message.user.userId} (${message.user.role})\x1b[0m`
+          );
+          xtermRef.current?.write("$ ");
+        } else if (message.type === "auth_fail") {
+          xtermRef.current?.writeln(`\r\n\x1b[31mAuthentication failed: ${message.reason}\x1b[0m`);
+        } else if (message.type === "output") {
           xtermRef.current?.write(message.data);
+        } else if (message.type === "confirm_required") {
+          pendingConfirmPhraseRef.current = message.phrase;
+          xtermRef.current?.writeln(
+            `\r\n\x1b[33mConfirmation required for: ${message.command}\x1b[0m`
+          );
+          xtermRef.current?.writeln(`Type exactly: \x1b[36m${message.phrase}\x1b[0m`);
+          xtermRef.current?.write("$ ");
+        } else if (message.type === "policy_violation") {
+          xtermRef.current?.writeln(`\r\n\x1b[31mPolicy violation: ${message.message}\x1b[0m`);
+          xtermRef.current?.write("$ ");
+        } else if (message.type === "error") {
+          xtermRef.current?.writeln(`\r\n\x1b[31mShell error: ${message.message}\x1b[0m`);
+          xtermRef.current?.write("$ ");
+        } else if (message.type === "exit") {
+          xtermRef.current?.writeln(`\r\n\x1b[33mShell exited with code ${message.code}\x1b[0m`);
         }
       } catch {
         xtermRef.current?.write(event.data);
@@ -136,8 +188,8 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
     xterm.loadAddon(fitAddon);
     xterm.loadAddon(webLinksAddon);
 
-    xterm.open(terminalRef.current);
-    fitAddon.fit();
+    const terminalElement = terminalRef.current;
+    xterm.open(terminalElement);
 
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
@@ -150,7 +202,12 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
 
       if (data === "\r") {
         xterm.write("\r\n");
-        wsRef.current.send(JSON.stringify({ type: "input", data: inputBuffer + "\n" }));
+        if (pendingConfirmPhraseRef.current && inputBuffer === pendingConfirmPhraseRef.current) {
+          wsRef.current.send(JSON.stringify({ type: "confirm", phrase: inputBuffer }));
+          pendingConfirmPhraseRef.current = null;
+        } else {
+          sendShellCommand(wsRef.current, inputBuffer);
+        }
         inputBuffer = "";
       } else if (data === "\x7f") {
         if (inputBuffer.length > 0) {
@@ -179,12 +236,20 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
     xterm.writeln("  \x1b[32mpolicy-apply --file <path>\x1b[0m      Apply policy manifest");
     xterm.writeln("  \x1b[32mledger query\x1b[0m                     Query the ledger");
     xterm.writeln("");
-    xterm.writeln("\x1b[36mConnecting to shell...\x1b[0m");
+    const connectWhenReady = () => {
+      if (!fitTerminal(fitAddon, xterm, terminalElement)) {
+        window.setTimeout(connectWhenReady, 50);
+        return;
+      }
 
-    connect();
+      xterm.writeln("\x1b[36mConnecting to shell...\x1b[0m");
+      connect();
+    };
+
+    const connectTimer = window.setTimeout(connectWhenReady, 0);
 
     const handleResize = () => {
-      fitAddon.fit();
+      fitTerminal(fitAddon, xterm, terminalElement);
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
           JSON.stringify({
@@ -200,6 +265,7 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
 
     return () => {
       isCleaningUpRef.current = true;
+      window.clearTimeout(connectTimer);
       window.removeEventListener("resize", handleResize);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -219,7 +285,7 @@ export function CloudShell({ onReady, initialCommand }: CloudShellProps) {
     ) {
       initialCommandSentRef.current = true;
       xtermRef.current?.write(initialCommand);
-      wsRef.current.send(JSON.stringify({ type: "input", data: initialCommand + "\n" }));
+      sendShellCommand(wsRef.current, initialCommand);
     }
   }, [initialCommand, connectionStatus]);
 
