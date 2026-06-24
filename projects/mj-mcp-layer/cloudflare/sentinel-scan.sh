@@ -47,6 +47,7 @@ CACHE=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/rulesets/phases/http_request_
 echo "==> [5/10] Page rules"
 PAGE=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/pagerules" || echo '{}')
 PAGE_RULES_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 1011 and (.message // "" | contains("account owned tokens"))))' <<<"$PAGE")
+BOT_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 10000 or .code == 9106 or .code == 9004))' <<<"$BOT")
 if [[ "$PAGE_RULES_UNSUPPORTED" == "true" ]]; then
   jq -nc \
     --arg ts "$(date -u +%FT%TZ)" \
@@ -123,7 +124,7 @@ API_ERRORS=$(jq -r '
     {name:"pagerules", payload:.pagerules},
     {name:"ssl", payload:.ssl},
     {name:"security_level", payload:.security_level},
-    {name:"bot_management", payload:.bot_management},
+    (if (env.BOT_UNSUPPORTED // "false") == "true" then empty else {name:"bot_management", payload:.bot_management} end),
     {name:"worker_routes", payload:.worker_routes}
   ]
   | map(select(.payload.success != true and (.name != "pagerules" or (.payload | pagerules_account_token_unsupported | not))))
