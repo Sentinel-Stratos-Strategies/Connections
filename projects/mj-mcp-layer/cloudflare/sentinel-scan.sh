@@ -119,11 +119,11 @@ WR=$(cf_request "$API/zones/$CF_ZONE_ID/workers/routes")
 
 echo "==> [10/10] Recent audit log (last 6h)"
 SINCE=$(date -u -v-6H +%FT%TZ 2>/dev/null || date -u -d '6 hours ago' +%FT%TZ)
-ACCT_ID="${CF_ACCOUNT_ID:-}"
+ACCT_ID="${CLOUDFLARE_ACCOUNT_ID:-${CF_ACCOUNT_ID:-}}"
 if [[ -n "$ACCT_ID" ]]; then
   AUDIT=$(cf_request "$API/accounts/$ACCT_ID/audit_logs?since=$SINCE&per_page=200")
 else
-  AUDIT='{"note":"CF_ACCOUNT_ID not set; skipping audit log"}'
+  AUDIT='{"note":"CLOUDFLARE_ACCOUNT_ID not set; skipping audit log"}'
 fi
 
 # ---------- consolidate ----------
