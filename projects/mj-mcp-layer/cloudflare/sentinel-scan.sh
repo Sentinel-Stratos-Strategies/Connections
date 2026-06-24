@@ -65,6 +65,10 @@ cf_request() {
 
 # Quick token verification to fail fast with a clear message if token is invalid
 VERIFY_JSON=$(cf_request "$API/user/tokens/verify")
+if echo "$VERIFY_JSON" | jq -e '. == {}' >/dev/null 2>&1; then
+  echo "ERROR: Cloudflare token verification could not reach API after retries (network/TLS failure)." >&2
+  exit 3
+fi
 if ! echo "$VERIFY_JSON" | jq -e '.success == true' >/dev/null 2>&1; then
   echo "ERROR: Cloudflare token verification failed: $(echo "$VERIFY_JSON" | jq -c '.errors // .')" >&2
   exit 2
