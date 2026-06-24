@@ -41,15 +41,18 @@
     "tailwindcss": "^3.4.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.0",
+    "@babel/core": "^7.29.7",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.10",
     "typescript": "^5.7.0"
   },
   "overrides": {
     "@xmldom/xmldom": "^0.9.10",
-    "tar": "^7.5.15",
+    "tar": "^7.5.16",
     "uuid": "^14.0.0",
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.15",
+    "undici": "^6.27.0",
+    "form-data": "^3.0.5",
+    "js-yaml": "^4.2.0"
   }
 }
