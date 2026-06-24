@@ -62,16 +62,9 @@ SSL=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/settings/ssl" || echo '{}')
 echo "==> [7/10] Security level"
 SEC=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/settings/security_level" || echo '{}')
 
-echo "==> [8/10] Bot management"
-BOT_RAW=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/bot_management" || echo '{}')
-set +e +o pipefail
-BOT=$(echo "$BOT_RAW" | jq "." 2>/dev/null)
-BOT_EXIT=$?
-set -e -o pipefail
-if [[ $BOT_EXIT -ne 0 ]] || [[ -z "$BOT" ]]; then
-  BOT='{"success":false,"errors":[{"code":9109,"message":"bot management not available on this plan"}]}'
-fi
-BOT_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 10000 or .code == 9106 or .code == 9004 or .code == 9109))' <<<"${BOT:-{}}")
+echo "==> [8/10] Bot management (skipped — Free plan)"
+BOT='{"success":false,"errors":[{"code":9109,"message":"plan_not_entitled"}]}'
+BOT_UNSUPPORTED=true
 export BOT_UNSUPPORTED
 
 echo "==> [9/10] Worker routes"
