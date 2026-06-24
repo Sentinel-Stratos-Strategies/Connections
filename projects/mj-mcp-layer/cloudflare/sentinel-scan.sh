@@ -64,7 +64,7 @@ SEC=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/settings/security_level" || ech
 
 echo "==> [8/10] Bot management"
 BOT=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/bot_management" || echo '{}')
-BOT_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 10000 or .code == 9106 or .code == 9004 or .code == 9109))' <<<"$BOT")
+BOT_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 10000 or .code == 9106 or .code == 9004 or .code == 9109))' <<<"${BOT:-{}}")
 export BOT_UNSUPPORTED
 
 echo "==> [9/10] Worker routes"
