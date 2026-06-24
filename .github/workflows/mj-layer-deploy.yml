@@ -64,7 +64,6 @@ jobs:
           mkdir -p projects/mj-mcp-layer/artifacts/evidence
           npm sbom --prefix projects/mj-mcp-layer/mcp-layer --sbom-format=cyclonedx --json > projects/mj-mcp-layer/artifacts/evidence/sbom.mcp-layer.json
           npm sbom --prefix projects/mj-mcp-layer/platform --sbom-format=cyclonedx --json > projects/mj-mcp-layer/artifacts/evidence/sbom.platform.json
-          npm sbom --prefix projects/mj-mcp-layer/frontend --sbom-format=cyclonedx --json > projects/mj-mcp-layer/artifacts/evidence/sbom.frontend.json
           cd projects/mj-mcp-layer/artifacts/evidence
           sha256sum sbom*.json > sbom-checksums.sha256
 
