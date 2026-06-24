@@ -27,25 +27,72 @@ mkdir -p "$RAW_DIR"
 API="https://api.cloudflare.com/client/v4"
 H=(-H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json")
 
+# Helper to call Cloudflare API with simple retry/backoff on rate limits and transient curl failures.
+cf_request() {
+  local url="$1"
+  local tries=0
+  local max_tries=5
+  local backoff=1
+  while true; do
+    # capture body (may be JSON) and curl exit; treat curl failure specially
+    resp=$(curl -sS "${H[@]}" "$url" 2>/dev/null || echo "__CURL_ERROR__")
+    if [ "$resp" = "__CURL_ERROR__" ]; then
+      ((tries++)) || true
+    else
+      # if API reports rate limit, consider retrying
+      if echo "$resp" | jq -e '(.success == false) and any(.errors[]?; .code == 10429)' >/dev/null 2>&1; then
+        ((tries++)) || true
+      else
+        printf '%s' "$resp"
+        return 0
+      fi
+    fi
+
+    if [ "$tries" -ge "$max_tries" ]; then
+      # give up and return last response (or empty JSON object)
+      if [ "$resp" = "__CURL_ERROR__" ]; then
+        printf '%s' '{}' ; return 0
+      else
+        printf '%s' "$resp" ; return 0
+      fi
+    fi
+
+    sleep_time=$((backoff + (RANDOM % backoff)))
+    sleep "$sleep_time"
+    backoff=$((backoff * 2))
+  done
+}
+
+# Quick token verification to fail fast with a clear message if token is invalid
+VERIFY_JSON=$(cf_request "$API/user/tokens/verify")
+if echo "$VERIFY_JSON" | jq -e '. == {}' >/dev/null 2>&1; then
+  echo "ERROR: Cloudflare token verification could not reach API after retries (network/TLS failure)." >&2
+  exit 3
+fi
+if ! echo "$VERIFY_JSON" | jq -e '.success == true' >/dev/null 2>&1; then
+  echo "ERROR: Cloudflare token verification failed: $(echo "$VERIFY_JSON" | jq -c '.errors // .')" >&2
+  exit 2
+fi
+
 echo "🛡️  SENTINEL SCAN — $TS"
 echo "    zone: $CF_ZONE_ID"
 echo
 
 # ---------- collect current state ----------
 echo "==> [1/10] DNS records"
-DNS=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/dns_records?per_page=500")
+DNS=$(cf_request "$API/zones/$CF_ZONE_ID/dns_records?per_page=500")
 
 echo "==> [2/10] WAF custom rules"
-WAF=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/rulesets/phases/http_request_firewall_custom/entrypoint" || echo '{}')
+WAF=$(cf_request "$API/zones/$CF_ZONE_ID/rulesets/phases/http_request_firewall_custom/entrypoint")
 
 echo "==> [3/10] Rate limit rules"
-RL=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/rulesets/phases/http_ratelimit/entrypoint" || echo '{}')
+RL=$(cf_request "$API/zones/$CF_ZONE_ID/rulesets/phases/http_ratelimit/entrypoint")
 
 echo "==> [4/10] Cache rules"
-CACHE=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/rulesets/phases/http_request_cache_settings/entrypoint" || echo '{}')
+CACHE=$(cf_request "$API/zones/$CF_ZONE_ID/rulesets/phases/http_request_cache_settings/entrypoint")
 
 echo "==> [5/10] Page rules"
-PAGE=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/pagerules" || echo '{}')
+PAGE=$(cf_request "$API/zones/$CF_ZONE_ID/pagerules")
 PAGE_RULES_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 1011 and (.message // "" | contains("account owned tokens"))))' <<<"$PAGE")
 if [[ "$PAGE_RULES_UNSUPPORTED" == "true" ]]; then
   jq -nc \
@@ -57,10 +104,10 @@ if [[ "$PAGE_RULES_UNSUPPORTED" == "true" ]]; then
 fi
 
 echo "==> [6/10] SSL settings"
-SSL=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/settings/ssl" || echo '{}')
+SSL=$(cf_request "$API/zones/$CF_ZONE_ID/settings/ssl")
 
 echo "==> [7/10] Security level"
-SEC=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/settings/security_level" || echo '{}')
+SEC=$(cf_request "$API/zones/$CF_ZONE_ID/settings/security_level")
 
 echo "==> [8/10] Bot management (skipped — Free plan)"
 BOT='{"success":false,"errors":[{"code":9109,"message":"plan_not_entitled"}]}'
@@ -68,15 +115,15 @@ BOT_UNSUPPORTED=true
 export BOT_UNSUPPORTED
 
 echo "==> [9/10] Worker routes"
-WR=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/workers/routes" || echo '{}')
+WR=$(cf_request "$API/zones/$CF_ZONE_ID/workers/routes")
 
 echo "==> [10/10] Recent audit log (last 6h)"
 SINCE=$(date -u -v-6H +%FT%TZ 2>/dev/null || date -u -d '6 hours ago' +%FT%TZ)
-ACCT_ID="${CF_ACCOUNT_ID:-}"
+ACCT_ID="${CLOUDFLARE_ACCOUNT_ID:-${CF_ACCOUNT_ID:-}}"
 if [[ -n "$ACCT_ID" ]]; then
-  AUDIT=$(curl -sS "${H[@]}" "$API/accounts/$ACCT_ID/audit_logs?since=$SINCE&per_page=200" || echo '{}')
+  AUDIT=$(cf_request "$API/accounts/$ACCT_ID/audit_logs?since=$SINCE&per_page=200")
 else
-  AUDIT='{"note":"CF_ACCOUNT_ID not set; skipping audit log"}'
+  AUDIT='{"note":"CLOUDFLARE_ACCOUNT_ID not set; skipping audit log"}'
 fi
 
 # ---------- consolidate ----------

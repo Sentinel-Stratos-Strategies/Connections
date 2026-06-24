@@ -52,12 +52,12 @@ jobs:
           echo "zone_id=$val" >> "$GITHUB_OUTPUT"
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
-      - name: Run sentinel scan
+         - name: Run sentinel scan
         if: steps.zone.outputs.skip != 'true'
         env:
-          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CF_API_TOKEN }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CF_ZONE_ID: ${{ steps.zone.outputs.zone_id }}
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID || '5b94eedaff8fb3ccaa1b607f57963e10' }}
         run: |
           cd projects/mj-mcp-layer
           bash cloudflare/sentinel-scan.sh
