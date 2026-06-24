@@ -64,7 +64,7 @@ SEC=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/settings/security_level" || ech
 
 echo "==> [8/10] Bot management"
 BOT_RAW=$(curl -sS "${H[@]}" "$API/zones/$CF_ZONE_ID/bot_management" || echo '{}')
-BOT=$(echo "$BOT_RAW" | jq "." 2>/dev/null || echo "{}")
+BOT=$(echo "$BOT_RAW" | jq "." 2>/dev/null || echo '{"success":false,"errors":[{"code":9109,"message":"bot management not available on this plan"}]}')
 BOT_UNSUPPORTED=$(jq -r '(.success == false) and any(.errors[]?; (.code == 10000 or .code == 9106 or .code == 9004 or .code == 9109))' <<<"${BOT:-{}}")
 export BOT_UNSUPPORTED
 
